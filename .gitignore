@@ -374,3 +374,7 @@ DerivedData/
 # User created
 VERSION
 version.py
+
+# Requirements
+!requirements.txt
+!requirements-dev.txt
