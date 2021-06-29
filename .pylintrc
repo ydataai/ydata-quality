@@ -1,0 +1,15 @@
+[BASIC]
+good-names=df,th
+
+[FORMAT]
+max-line-length=120
+too-many-arguments=5
+
+[QUALITY]
+fail-under=9.0
+
+[REPORTS]
+output-format=colorized
+
+[MASTER]
+ignore=version.py
