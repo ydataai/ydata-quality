@@ -10,7 +10,7 @@ from ydata_quality.core import QualityWarning, QualityEngine
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[Union(str, List[str])] = []):
+    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = []):
         self._df = df
         self._entities = entities
         self._warnings = set()
@@ -22,7 +22,7 @@ class DuplicateChecker(QualityEngine):
         return self._entities
 
     @entities.setter
-    def entities(self, entities: List[Union(str, List[str])]):
+    def entities(self, entities: List[Union[str, List[str]]]):
         if not isinstance(entities, list):
             raise ValueError("Property 'entities' should be a list.")
         assert all(entity in self.df.columns if isinstance(entity, str) else [c in self.df.columns for c in entity] for entity in entities), "Given entities should exist as DataFrame's columns."
@@ -34,7 +34,7 @@ class DuplicateChecker(QualityEngine):
         return df[df.duplicated()]
 
     @staticmethod
-    def __get_entity_duplicates(df: pd.DataFrame, entity: Union(str, List[str])):
+    def __get_entity_duplicates(df: pd.DataFrame, entity: Union[str, List[str]]):
         "Returns the duplicate records aggregated by a given entity."
         return df.groupby(entity).apply(DuplicateChecker.__get_duplicates).reset_index(drop=True)
 
@@ -52,7 +52,7 @@ class DuplicateChecker(QualityEngine):
             dups = None
         return dups
 
-    def entity_duplicates(self, entity: Optional[Union(str, List[str])] = None):
+    def entity_duplicates(self, entity: Optional[Union[str, List[str]]] = None):
         """Returns a dict of (entity_value: duplicates) of duplicate records after grouping by an entity.
 
         If entity is not specified, compute for all entities defined in the init.
@@ -84,7 +84,7 @@ class DuplicateChecker(QualityEngine):
                 print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
                 return None
             else:
-                return {col: self.entity_duplicates(col) for col in self.entities}
+                return {col if isinstance(col,str) else tuple(col):self.entity_duplicates(col)[col] if isinstance(col,str) else self.entity_duplicates(col) for col in self.entities}
 
 
     def duplicate_columns(self):
