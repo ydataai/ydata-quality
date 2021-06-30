@@ -2,7 +2,7 @@
 Implementation of DuplicateChecker engine class to run duplicate records analysis.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import pandas as pd
 from ydata_quality.core import QualityWarning, QualityEngine
@@ -10,7 +10,7 @@ from ydata_quality.core import QualityWarning, QualityEngine
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[str] = []):
+    def __init__(self, df: pd.DataFrame, entities: List[Union(str, List[str])] = []):
         self._df = df
         self._entities = entities
         self._warnings = set()
@@ -22,10 +22,10 @@ class DuplicateChecker(QualityEngine):
         return self._entities
 
     @entities.setter
-    def entities(self, entities: List[str]):
+    def entities(self, entities: List[Union(str, List[str])]):
         if not isinstance(entities, list):
             raise ValueError("Property 'entities' should be a list.")
-        assert all([c in self.df.columns for c in entities]), "Given entities should exist as DataFrame's columns."
+        assert all(entity in self.df.columns if isinstance(entity, str) else [c in self.df.columns for c in entity] for entity in entities), "Given entities should exist as DataFrame's columns."
         self._entities = entities
 
     @staticmethod
@@ -34,7 +34,7 @@ class DuplicateChecker(QualityEngine):
         return df[df.duplicated()]
 
     @staticmethod
-    def __get_entity_duplicates(df: pd.DataFrame, entity: str):
+    def __get_entity_duplicates(df: pd.DataFrame, entity: Union(str, List[str])):
         "Returns the duplicate records aggregated by a given entity."
         return df.groupby(entity).apply(DuplicateChecker.__get_duplicates).reset_index(drop=True)
 
@@ -52,7 +52,7 @@ class DuplicateChecker(QualityEngine):
             dups = None
         return dups
 
-    def entity_duplicates(self, entity: Optional[str] = None):
+    def entity_duplicates(self, entity: Optional[Union(str, List[str])] = None):
         """Returns a dict of (entity_value: duplicates) of duplicate records after grouping by an entity.
 
         If entity is not specified, compute for all entities defined in the init.
@@ -73,9 +73,12 @@ class DuplicateChecker(QualityEngine):
                         test='Entity Duplicates', category='Duplicates', priority=2, data=dups,
                         description=f"Found {len(dups)} duplicates after grouping by entities."
                 ))
-                for val in set(dups[entity]):        # iterate on each entity with duplicates
-                    ent_dups[val] = dups[dups[entity]==val]
-            return ent_dups
+                if isinstance(entity, str):
+                    entity = [entity]  # Makes logic the same for str or List[str] entities
+                for entity_ in entity:
+                    for val in set(dups[entity_]):  # iterate on each entity with duplicates
+                        ent_dups.setdefault(entity_, {})[val] = dups[dups[entity_]==val]
+                return ent_dups
         else: # if entity is not specified
             if len(self.entities) == 0:
                 print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
