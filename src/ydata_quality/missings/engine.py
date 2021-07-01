@@ -1,11 +1,14 @@
 """
 Implementation of MissingProfiler engine to run missing value analysis.
 """
-from typing import Optional, List
-import pandas as pd
+from typing import List, Optional
 
+import numpy as np
+import pandas as pd
 from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.modelling import predict_missingness, performance_per_missing_value
+from ydata_quality.utils.modelling import (performance_per_missing_value,
+                                           predict_missingness)
+
 
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
@@ -84,7 +87,7 @@ class MissingsProfiler(QualityEngine):
         "Returns a list of correlation pairs with high correlation of missing values."
 
         corrs = self.missing_correlations().abs()        # compute the absolute correlation
-        corrs[corrs==1] = -1                             # remove the same column pairs
+        np.fill_diagonal(corrs.values, -1)               # remove the same column pairs
         corrs = corrs[corrs>th].melt(ignore_index=False).reset_index().dropna() # subset by threshold
 
         # TODO: For acyclical correlation measures (e.g. Theil's U), store direction as well
