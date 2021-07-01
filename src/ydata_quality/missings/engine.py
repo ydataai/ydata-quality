@@ -40,18 +40,18 @@ class MissingsProfiler(QualityEngine):
         else:
             return 'regression'
 
-    def null_count(self, col: Optional[str] = None, as_pct=False, minimal=True):
+    def null_count(self, col: Optional[str] = None, normalize=False, minimal=True):
         """Returns the count of nulls for a given column. Defaults to full dataframe.
 
         Args:
             col (optional, str): name of column to calculate nulls. If none, consider all.
-            as_pct (bool): flag to return nulls as percentage of total rows. Defaults to False.
+            normalize (bool): flag to return nulls as proportion of total rows. Defaults to False.
             minimal (bool): flag to drop zero-nulls when computed for all columns.
         """
         # if col is not provided, calculate for full dataset
         count = self.df.isnull().sum() if col is None else self.df[col].isnull().sum()
-        # if as_pct, return as percentage of total rows
-        count = count / len(self.df) if as_pct else count
+        # if normalize, return as percentage of total rows
+        count = count / len(self.df) if normalize else count
         # subset
         if col is None and minimal:
             count = count[count>0]
@@ -59,7 +59,7 @@ class MissingsProfiler(QualityEngine):
 
     def nulls_higher_than(self, th=0.2):
         "Returns the list of columns with higher missing value percentage than the defined threshold."
-        ratios = self.null_count(col=None, as_pct=True)
+        ratios = self.null_count(col=None, normalize=True)
         high_ratios = ratios[ratios >= th]
         if len(high_ratios) > 0:
             self._warnings.add(
