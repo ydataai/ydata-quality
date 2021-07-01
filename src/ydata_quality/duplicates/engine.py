@@ -75,16 +75,21 @@ class DuplicateChecker(QualityEngine):
                 ))
                 if isinstance(entity, str):
                     entity = [entity]  # Makes logic the same for str or List[str] entities
-                for entity_ in entity:
-                    for val in set(dups[entity_]):  # iterate on each entity with duplicates
-                        ent_dups.setdefault(entity_, {})[val] = dups[dups[entity_]==val]
+                set_vals = set(dups[entity].apply(tuple, axis=1))
+                if len(entity)>1:
+                    entity_key = tuple(entity)  # Lists are not hashable, therefore cannot be dictionary keys
+                else:
+                    set_vals = [val[0] for val in set_vals]  # No need to store keys as tuples for single entities (single values)
+                    entity_key = entity[0]
+                for val in set_vals:  # iterate on each entity with duplicates
+                    ent_dups.setdefault(entity_key, {})[val] = dups[dups[entity].values==val]
                 return ent_dups
         else: # if entity is not specified
             if len(self.entities) == 0:
                 print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
                 return None
             else:
-                return {col if isinstance(col,str) else tuple(col):self.entity_duplicates(col)[col] if isinstance(col,str) else self.entity_duplicates(col) for col in self.entities}
+                return {col if isinstance(col,str) else tuple(col):list(self.entity_duplicates(col).values())[0] for col in self.entities}
 
 
     def duplicate_columns(self):
