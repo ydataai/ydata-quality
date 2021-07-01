@@ -25,8 +25,15 @@ class DuplicateChecker(QualityEngine):
     def entities(self, entities: List[Union[str, List[str]]]):
         if not isinstance(entities, list):
             raise ValueError("Property 'entities' should be a list.")
+        entities = self.__unique_entities(entities)
         assert all(entity in self.df.columns if isinstance(entity, str) else [c in self.df.columns for c in entity] for entity in entities), "Given entities should exist as DataFrame's columns."
         self._entities = entities
+
+    @staticmethod
+    def __unique_entities(entities: List[Union[str, List[str]]]):
+        """Returns entities list with only unique entities"""
+        entities = set([entity if isinstance(entity, str) else entity[0] if len(entity)==1 else tuple(entity) for entity in entities])
+        return [entity if isinstance(entity, str) else list(entity) for entity in entities]
 
     @staticmethod
     def __get_duplicates(df: pd.DataFrame):
@@ -53,10 +60,8 @@ class DuplicateChecker(QualityEngine):
         return dups
 
     def entity_duplicates(self, entity: Optional[Union[str, List[str]]] = None):
-        """Returns a dict of (entity_value: duplicates) of duplicate records after grouping by an entity.
-
+        """Returns a dict of {entity: {entity_value: duplicates}} of duplicate records after grouping by an entity.
         If entity is not specified, compute for all entities defined in the init.
-        TODO: Enable computation of duplicates per multiple entities at once (e.g. groupby(['featureA', 'featureB'])).
         """
         # Computation Decision Tree
         # entity is specified : compute for given entity, return dict {entity_values: duplicate records}
@@ -81,7 +86,7 @@ class DuplicateChecker(QualityEngine):
                     set_vals = [val[0] for val in set_vals]  # No need to store keys as tuples for single entities (single values)
                     entity_key = entity[0]
                 for val in set_vals:  # iterate on each entity with duplicates
-                    ent_dups.setdefault(entity_key, {})[val] = dups[dups[entity].values==val]
+                    ent_dups.setdefault(entity_key, {})[val] = dups[(dups[entity].values==val).all(axis=1)]
         else: # if entity is not specified
             if len(self.entities) == 0:
                 print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
