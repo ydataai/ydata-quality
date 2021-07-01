@@ -117,7 +117,7 @@ class MissingsProfiler(QualityEngine):
             c: performance_per_missing_value(df=self.df, feature=c, target=self.target, type=prediction_type)
             for c in cols
         }
-        return results
+        return pd.DataFrame(results)
 
     def predict_missings(self, col: Optional[str] = None, th=0.8):
         """Calculates the performance score of a baseline model trained to predict missingness of a specific feature.
