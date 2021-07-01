@@ -63,9 +63,8 @@ class DuplicateChecker(QualityEngine):
         # entity is not specified
         #   -> entities is None : skip the test
         #   -> entities is not None : defaults to entities defined in the init
-
+        ent_dups = {}
         if entity is not None: # entity is specified
-            ent_dups = {}
             dups = self.__get_entity_duplicates(self.df, entity)
             if len(dups) > 0:                        # if we have any duplicates
                 self._warnings.add(
@@ -83,13 +82,14 @@ class DuplicateChecker(QualityEngine):
                     entity_key = entity[0]
                 for val in set_vals:  # iterate on each entity with duplicates
                     ent_dups.setdefault(entity_key, {})[val] = dups[dups[entity].values==val]
-                return ent_dups
         else: # if entity is not specified
             if len(self.entities) == 0:
                 print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
                 return None
             else:
-                return {col if isinstance(col,str) else tuple(col):list(self.entity_duplicates(col).values())[0] for col in self.entities}
+                for col in self.entities:
+                    ent_dups.update(self.entity_duplicates(col))
+        return ent_dups
 
 
     def duplicate_columns(self):
