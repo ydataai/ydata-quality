@@ -5,7 +5,9 @@ Implementation of DuplicateChecker engine class to run duplicate records analysi
 from typing import List, Optional, Union
 
 import pandas as pd
-from ydata_quality.core import QualityWarning, QualityEngine
+
+from ydata_quality.core import QualityEngine, QualityWarning
+
 
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
