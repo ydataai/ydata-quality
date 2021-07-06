@@ -95,7 +95,7 @@ class MissingsProfiler(QualityEngine):
         corrs['features'] = ['_'.join(sorted((i.index, i.variable))) for i in corrs.itertuples()]
         corrs.drop_duplicates('features', inplace=True) # deduplicate combination pairs
         corrs.sort_values(by='value', ascending=False, inplace=True) # sort by correlation
-        corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[['missings_corr']] # rename and subset columns
+        corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[['missings_corr']].squeeze() # rename and subset columns
 
         if len(corrs) > 0:
             self._warnings.add(
@@ -130,9 +130,14 @@ class MissingsProfiler(QualityEngine):
         # Parse the columns for which to calculate the missingness performance
         cols = self._get_null_cols(col)
         # Calculate the performance for each feature
-        results = {c: predict_missingness(df=self.df, feature=c) for c in cols}
+        results = pd.Series(
+                    {c: predict_missingness(df=self.df, feature=c) for c in cols},
+                    name='predict_missings'
+                )
+
         # Subset for performances above threshold
-        high_perfs = {k: v for (k,v) in results.items() if v > th}
+        high_perfs = results[results > th]
+
         if len(high_perfs) > 0:
             self._warnings.add(
                 QualityWarning(
@@ -141,10 +146,3 @@ class MissingsProfiler(QualityEngine):
                 )
             )
         return results
-
-    def excess_missing_correlations(self):
-        """Calculates the difference of feature values correlations between filled and missing values.
-
-        excess_correlation = abs(missings_correlation - correlation)
-        """
-        raise NotImplementedError
