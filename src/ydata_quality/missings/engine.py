@@ -15,9 +15,8 @@ class MissingsProfiler(QualityEngine):
 
     def __init__(self, df: pd.DataFrame, target: Optional[str] = None):
         "Run a missing values analysis over a given DataFrame."
-        self._df = df
+        super().__init__(df=df)
         self._target = target
-        self._warnings = set()
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
 
     @property
@@ -93,9 +92,10 @@ class MissingsProfiler(QualityEngine):
         # TODO: For acyclical correlation measures (e.g. Theil's U), store direction as well
 
         # create the sorted pairs of feature names
-        corrs['sorted_pairs'] = ['_'.join(sorted((i.index, i.variable))) for i in corrs.itertuples()]
-        corrs.drop_duplicates('sorted_pairs', inplace=True) # deduplicate combination pairs
+        corrs['features'] = ['_'.join(sorted((i.index, i.variable))) for i in corrs.itertuples()]
+        corrs.drop_duplicates('features', inplace=True) # deduplicate combination pairs
         corrs.sort_values(by='value', ascending=False, inplace=True) # sort by correlation
+        corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[['missings_corr']] # rename and subset columns
 
         if len(corrs) > 0:
             self._warnings.add(
