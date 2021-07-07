@@ -43,6 +43,7 @@ class MissingsProfiler(QualityEngine):
 
     def __get_prediction_type(self):
         "Decide whether to use classification or regression setting, based on target."
+        # TODO: Improve prediction type guesstimate based on alternative heuristics (e.g. dtypes, value_counts)
         if len(set(self.df[self.target])) == 2: # binary classification
             return 'classification'
         else:
