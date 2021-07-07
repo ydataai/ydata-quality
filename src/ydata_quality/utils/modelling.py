@@ -43,6 +43,19 @@ def baseline_predictions(df: pd.DataFrame, target: str, type='classification'):
     # 4. Return both the predictions and X_test, y_test to analyze the performances
     return y_pred, X_test, y_test
 
+def baseline_performance(df: pd.DataFrame, target: str, type='classification'):
+    "Train a baseline model, predict for a test set and return the performance."
+
+    # 1. Define the baseline performance metric
+    metric = roc_auc_score if type == 'classification' else mean_squared_error
+
+    # 2. Get the baseline predictions
+    y_pred, _, y_test = baseline_predictions(df=df, target=target, type=type)
+
+    # 3. Get the performance
+    return metric(y_test, y_pred)
+
+
 def performance_per_feature_values(df: pd.DataFrame, feature: str, target: str, type='classification'):
     """Performance achieved per each value of a groupby feature."""
 
