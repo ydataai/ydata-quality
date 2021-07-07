@@ -70,7 +70,7 @@ class MissingsProfiler(QualityEngine):
         ratios = self.null_count(col=None, normalize=True)
         high_ratios = ratios[ratios >= th]
         if len(high_ratios) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='High Missings', category='Missings', priority=3, data=high_ratios,
                     description=f"Found {len(high_ratios)} columns with more than {th*100:.1f}% of missing values."
@@ -104,7 +104,7 @@ class MissingsProfiler(QualityEngine):
         corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[['missings_corr']].squeeze() # rename and subset columns
 
         if len(corrs) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='High Missing Correlations', category='Missings', priority=3, data=corrs,
                     description=f"Found {len(corrs)} feature pairs with correlation "\
@@ -170,7 +170,7 @@ class MissingsProfiler(QualityEngine):
 
         # Generate a QualityWarning if any high
         if len(high_perfs) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Missingness Prediction', category='Missings', priority=2, data=high_perfs,
                     description=f'Found {len(high_perfs)} features with prediction performance of missingness above threshold ({th}).'

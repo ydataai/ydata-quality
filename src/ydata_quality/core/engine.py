@@ -4,6 +4,8 @@ Implementation of abstract class for Data Quality engines.
 from abc import ABC
 import pandas as pd
 
+from ydata_quality.core import QualityWarning
+
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
@@ -21,6 +23,10 @@ class QualityEngine(ABC):
     def warnings(self):
         "Storage of all detected data quality warnings."
         return self._warnings
+
+    def store_warning(self, warning: QualityWarning):
+        "Adds a new warning to the internal 'warnings' storage."
+        self._warnings.add(warning)
 
     @property
     def tests(self):

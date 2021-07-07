@@ -36,10 +36,10 @@ class Priority(OrderedEnum):
 class QualityWarning(BaseModel):
     """ Details for issues detected during data quality analysis.
 
-    category: name of the test suite (e.g. 'Exact Duplicates')
-    test: name of the individual test
+    category: name of the test suite (e.g. 'Duplicates')
+    test: name of the individual test (e.g. 'Exact Duplicates')
     description: long-text description of the results
-    priority: expected impact of data quality issue
+    priority: expected impact of data quality warning
     data: sample data
     """
 
