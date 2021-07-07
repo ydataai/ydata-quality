@@ -1,12 +1,14 @@
 """
 Implementation of MissingProfiler engine to run missing value analysis.
 """
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
+
 from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.modelling import (performance_per_missing_value,
+from ydata_quality.utils.modelling import (baseline_performance,
+                                           performance_per_missing_value,
                                            predict_missingness)
 
 
@@ -14,7 +16,11 @@ class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
     def __init__(self, df: pd.DataFrame, target: Optional[str] = None):
-        "Run a missing values analysis over a given DataFrame."
+        """
+        Args:
+            df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
+            target (str, optional): target
+        """
         super().__init__(df=df)
         self._target = target
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
@@ -42,11 +48,11 @@ class MissingsProfiler(QualityEngine):
         else:
             return 'regression'
 
-    def null_count(self, col: Optional[str] = None, normalize=False, minimal=True):
-        """Returns the count of nulls for a given column. Defaults to full dataframe.
+    def null_count(self, col:  Union[List[str], str, None] = None, normalize=False, minimal=True):
+        """Returns the count of null values.
 
         Args:
-            col (optional, str): name of column to calculate nulls. If none, consider all.
+            col (optional, str): name of column to calculate nulls. If none, calculates for full dataframe.
             normalize (bool): flag to return nulls as proportion of total rows. Defaults to False.
             minimal (bool): flag to drop zero-nulls when computed for all columns.
         """
@@ -107,25 +113,49 @@ class MissingsProfiler(QualityEngine):
             )
         return corrs
 
-    def performance_drop(self, col: Optional[str] = None):
-        "Calculate the drop in performance when the feature values of a given column are missing."
+    def performance_drop(self, col: Union[List[str], str, None] = None, normalize=True):
+        """Calculate the drop in performance when the feature values of a given column are missing.
+
+        Performance is measured by "AU-ROC" for binary classification and "Mean Squared Error" for regression.
+
+        Args:
+            col (Union[List[str], str, None], optional): reference for comparing performances between valued and missing value instances.
+                                    If None, calculates performance_drop for all columns with missing values.
+            normalize (bool): performance as ratio over baseline performance achieved for entire dataset.
+        """
         # Parse the columns for which to calculate the drop in performance on missings
         cols = self._get_null_cols(col)
+
         # Guarantee that target is defined. Otherwise skip
         if self.target is None:
             print('Argument "target" must be defined to calculate performance_drop metric. Skipping test.')
             pass
+
+        # Guesstimate the prediction type
         prediction_type = self.__get_prediction_type()
-        results = {
+        results = pd.DataFrame({
             c: performance_per_missing_value(df=self.df, feature=c, target=self.target, type=prediction_type)
             for c in cols
-        }
-        return pd.DataFrame(results)
+        })
 
-    def predict_missings(self, col: Optional[str] = None, th=0.8):
+        # Normalize the results with a baseline performance.
+        if normalize:
+            baseline = baseline_performance(df=self.df, target=self.target, type=prediction_type)
+            results = results / baseline
+
+        return results
+
+    def predict_missings(self, col: Union[List[str], str, None] = None, th=0.8):
         """Calculates the performance score of a baseline model trained to predict missingness of a specific feature.
 
-        If col is not provided, calculate for all the features with missing values.
+        Performance is measured on "AU-ROC" for a binary classifier trained to predict occurrence of missing values.
+        High performances signal that the occurrence of missing values for a specific feature may be impacted by the
+        feature values of all the remaining features.
+
+        Args:
+            col (Union[List[str], str, None], optional): reference for predicting occurrence of missing values.
+                                    If None, calculates predict_missings for all columns with missing values.
+            th (float): performance threshold to generate a QualityWarning.
         """
         # Parse the columns for which to calculate the missingness performance
         cols = self._get_null_cols(col)
@@ -138,6 +168,7 @@ class MissingsProfiler(QualityEngine):
         # Subset for performances above threshold
         high_perfs = results[results > th]
 
+        # Generate a QualityWarning if any high
         if len(high_perfs) > 0:
             self._warnings.add(
                 QualityWarning(
