@@ -6,9 +6,8 @@ from typing import Union
 import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.modelling import (GMM_clustering, elbow,
-                                           estimate_centroid, estimate_sd,
-                                           infer_dtypes, kmeans,
+from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
+                                           estimate_sd, infer_dtypes,
                                            normality_test,
                                            performance_one_vs_rest,
                                            standard_transform)
@@ -164,7 +163,8 @@ class CategoricalLabelInspector(SharedLabelInspector):
         Arguments:
             slack: Margin for alert triggers based on label representativity.
                 Slack is linearly adjusted for n>2 classes.
-        TODO: Plot bar chart with observation counts for each class and respective thresholds"""
+        """
+        # TODO: Plot bar chart with observation counts for each class and respective thresholds
         if slack < 0 or slack > 0.5:
             raise ValueError('Slack must be part of the open interval ]0, 0.5[')
         label_counts = self._get_label_counts(dropna=True)  # No label records are not considered
@@ -200,7 +200,8 @@ class CategoricalLabelInspector(SharedLabelInspector):
         Returns a series with Area Under Curve for each label class.
         Slack defines a proportion for the record weighted average of performances as a tolerance.
         Any binary classifier that scores below the average minus tolerance triggers a warning.
-        TODO; Plot ROC curve"""
+        """
+        # TODO: Plot ROC curve
         assert 0<=slack<=1, "Argument th is expected to be a float in the [0,1] interval"
         _class_counts = self._get_label_counts(dropna=True)
         _class_counts = _class_counts[_class_counts>1]
@@ -275,35 +276,11 @@ class CategoricalLabelInspector(SharedLabelInspector):
 
 
 class NumericalLabelInspector(SharedLabelInspector):
-    """Engine for running analyis on labels.
-    Ordinal labels can be handled if passed as categorical.
-    Numerical labels are not currently supported."""
+    "Engine for running analyis on numerical labels."
 
     def __init__(self, df: pd.DataFrame, label: str):
         super().__init__(df, label)
         self._tests = ["missing_labels", "test_normality", "outlier_detection"]
-
-    def _equal_clusters(self, nbins: int =5):
-        """Sorts by label and separates the dataset into nbins of equal size
-        TODO: Applications based on this? Initially it was meant for a bin width comparison. Considering deprecating"""
-        sorted_vals = self.tdf[self.label].sort_values().copy()
-        n_rows = len(sorted_vals)
-        avg_bin_size = n_rows/nbins
-        sorted_vals[:] = list(range(n_rows))
-        return sorted_vals.apply(lambda x: int(x/avg_bin_size))
-
-    def _KMeans_clusters(self, max_clusters):
-        """Separates the dataset into a KMeans cluster optimized nbins.
-        Clustering is done only with the label column values.
-        TODO: Considering deprecating, full cluster usability currently with GMM"""
-        sorted_vals =  self.tdf[self.label].sort_values().copy()
-        search_space = range(1, max_clusters)
-        inertias = [None for k in search_space]
-        labels = {k: None for k in search_space}
-        for i, k in enumerate(search_space):
-            labels[k], inertias[i] = kmeans(sorted_vals.values.reshape(-1, 1), k)
-        ideal_k = elbow(search_space, inertias)
-        return pd.Series(labels[ideal_k], index=sorted_vals.index)
 
     def _GMM_clusters(self, max_clusters):
         """Separates the dataset into a Gaussian Mixture Model cluster optimized nbins.
