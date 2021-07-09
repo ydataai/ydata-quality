@@ -6,9 +6,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from numpy.random.mtrand import normal
 from scipy.stats import boxcox, normaltest
-from sklearn.cluster import KMeans
 from sklearn.compose import ColumnTransformer
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.impute import SimpleImputer
@@ -258,23 +256,10 @@ def estimate_sd(sample: pd.DataFrame, reference=None, dtypes = None):
     std_distances = euclidean_distances/std_dev
     return std_dev, std_distances
 
-def kmeans(data, n_clusters):
-    """Produces k means estimation for clusters"""
-    kmeans_ = KMeans(n_clusters=n_clusters).fit(data)
-    return kmeans_.labels_, kmeans_.inertia_
-
 def GMM_clustering(data, n_gaussians):
     """Produces a GMM model with n_gaussians to cluster provided data."""
     gmm_ = GaussianMixture(n_components=n_gaussians).fit(data)
     return gmm_.predict(data), gmm_.aic(data)
-
-def elbow(K, inertias: Union[list, np.array]):
-    """Performs simple elbow method in a KMeans inertias vector.
-    Selects k with highest drop in inertias."""
-    N=1  # number of times values are differenced
-    assert len(K) == len(inertias), "Total inertias should be the same as number of configurations"
-    diffs = list(np.diff(inertias, n=N))
-    return K[diffs.index(min(diffs))+N]  # Differencing gives a shift dependent on N
 
 def normality_test(data, suite='full', p_th= 5e-3):
     """Performs a normality test on the data. Null hypothesis, data comes from normal distribution.
