@@ -13,7 +13,7 @@ from ydata_quality.core import QualityEngine, QualityWarning
 class VMVIdentifier(QualityEngine):
     "Engine for running analyis on valued missing values."
 
-    def __init__(self, df: pd.DataFrame, time_index: Optional[str] = None):
+    def __init__(self, df: pd.DataFrame, VMV_extensions: list=[]):
         """
         Args:
             df (pd.DataFrame): DataFrame used to run the missing value analysis.
@@ -21,33 +21,10 @@ class VMVIdentifier(QualityEngine):
                 Provide only to override default timeseries inference on the dataset index.
         """
         super().__init__(df=df)
-        self._tests = ["flatlines", "mixed_dtypes"]
-        self._time_index = time_index  # None implies the dataframe index
-        self._is_time_series = self._check_time_index()  # Validates status regarding being a time series or not
+        self._tests = ["flatlines", "predefined_valued_missing_values"]
         self._flatline_index = {}
-        self._default_VMVs = ["?", "UNK", "Unknown", "N/A", "NA", "", "(blank)"]
-        self.__default_index_name = '__index'
-
-    def _check_time_index(self):
-        """Tries to infer from current time_index column if the dataframe is a timeseries or not.
-        Tries index colum by default if time_index argument was not provided.
-        Raises warning if a passed time_index test fails, will not raise on default index infer.
-        Sets _is_time_series to True if the test passes"""
-        raises = False if self._time_index is None else True  # If no _time_index is passed we don't raise warning
-        if self._time_index  and self._time_index != self.__default_index_name:
-            time_index = self.df[self._time_index]
-        else:
-            time_index = self.df.index  # Only tests index if no time_index column is passed
-        if isinstance(time_index, (pd.DatetimeIndex, pd.PeriodIndex, pd.TimedeltaIndex)):
-            return True
-        if raises:
-            self._warnings.add(
-                QualityWarning(
-                    test='Check Time Index', category='Valued Missing Duplicates', priority=2, data=time_index,
-                    description=f"The provided column {self._time_index} is not a valid time series index type."
-                )
-            )
-        return False
+        self._default_VMVs = set("?", "UNK", "Unknown", "N/A", "NA", "", "(blank)").union(
+            set(VMV_extensions))
 
     @staticmethod
     def __get_flatline_index(column: pd.Series):
@@ -68,7 +45,7 @@ class VMVIdentifier(QualityEngine):
         Raises warning indicating columns with flatline events and total flatline events in the dataframe.
         Arguments:
             th: Defines the minimum length required for a flatline event to be reported.
-            skip: List of features that will not be target of search for flatlines.
+            skip: List of columns that will not be target of search for flatlines.
                 Pass '__index' in skip to skip looking for flatlines at the index."""
         df = self.df.copy()  # Index will not be covered in column iteration
         df[self.__default_index_name] = df.index  # Index now in columns to be processed next
@@ -92,8 +69,36 @@ class VMVIdentifier(QualityEngine):
         else:
             print("[FLATLINES] No flatline events with a minimum length of {} were found.")
 
-    def predefined_valued_missing_values(self):
+    def predefined_valued_missing_values(self, skip: list=[]):
         """Runs a check against a list of predefined Valued Missing Values.
-        Raises warning based on the existance of these values and returns a DataFrame\
-        with count distribution for each predefined type over each column"""
+        Raises warning based on the existance of these values.
+        Returns a DataFrame with count distribution for each predefined type over each column.
+        Arguments:
+            skip: List of columns that will not be target of search for VMVs.
+                Pass '__index' in skip to skip looking for flatlines at the index."""
+        df = self.df.copy()  # Index will not be covered in column iteration
+        df[self.__default_index_name] = df.index  # Index now in columns to be processed
+        check_cols = set(df.columns).difference(set(skip))
+        df = df[check_cols]
+        VMVs = pd.DataFrame(index=self.predefined_valued_missing_values, columns=check_cols)
+        for VMV in self.predefined_valued_missing_values:
+            VMVs.loc[VMV] = (df==VMV).sum()
+        VMVs.drop((VMVs.sum()==0).index, axis=1)
+        if VMVs.empty:
+            print("[PREDEFINED VALUED MISSING VALUES] No predefined VMVs from  the set {} were found in the dataset.".format(
+                self.predefined_valued_missing_values
+            ))
+        else:
+            self._warnings.add(
+                QualityWarning(
+                    test='Predefined Valued Missing Values', category='Valued Missing Values', priority=2, data=VMVs,
+                    description=f"Found {total_flatlines} VMVs in the dataset."
+            ))
+            return VMVs
+
+
+
+
+
+
         
