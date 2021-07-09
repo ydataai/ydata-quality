@@ -7,7 +7,7 @@ from typing import Optional
 import pandas as pd
 from ydata_quality.core import QualityWarning
 from ydata_quality.core.warnings import Priority
-
+from ydata_quality.utils.context import noprint
 
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
@@ -54,6 +54,7 @@ class QualityEngine(ABC):
         for warn in self.warnings:
             print(warn)
 
+    @noprint
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
         self._warnings = set() # reset the warnings to avoid duplicates
