@@ -11,21 +11,23 @@ from ydata_quality.core import QualityEngine, QualityWarning
 
 
 class VMVIdentifier(QualityEngine):
-    "Engine for running analyis on valued missing values."
+    "Engine for running analysis on valued missing values."
 
-    def __init__(self, df: pd.DataFrame, VMV_extensions: list=[]):
+    def __init__(self, df: pd.DataFrame, VMV_extensions: Optional[list]=[]):
         """
         Args:
             df (pd.DataFrame): DataFrame used to run the missing value analysis.
             time_index (str, optional): references column to be used as index in timeseries df.
                 Provide only to override default timeseries inference on the dataset index.
         """
+        assert isinstance(VMV_extensions, list), "VMV extensions must be passed as a list"
         super().__init__(df=df)
         self._tests = ["flatlines", "predefined_valued_missing_values"]
         self._flatline_index = {}
-        self._default_VMVs = set("?", "UNK", "Unknown", "N/A", "NA", "", "(blank)").union(
-            set(VMV_extensions))
-
+        self.__default_index_name = '__index'
+        self._default_VMVs = set(["?", "UNK", "Unknown", "N/A", "NA", "", "(blank)"])
+        self._VMVs = self._default_VMVs.union(set(VMV_extensions))
+        
     @staticmethod
     def __get_flatline_index(column: pd.Series):
         """Returns an index for flatline events on a passed column.
@@ -38,7 +40,8 @@ class VMVIdentifier(QualityEngine):
         sequence_groups = column.index.to_series().groupby(cum_differs_previous)
         data = {'length': sequence_groups.count().values,
         'ends': sequence_groups.last().values}
-        return pd.DataFrame(data, index=sequence_groups.first().values).query('lengths > 1')
+        flts = pd.DataFrame(data, index=sequence_groups.first().values).query('length > 1')
+        return flts.rename_axis('starts')  # Adding index name for clarity
 
     def flatlines(self, th: int=5, skip: list=[]):
         """Checks the flatline index for flat sequences of length over a given threshold.
@@ -55,11 +58,11 @@ class VMVIdentifier(QualityEngine):
                 continue  # Column not requested
             flt_index = self._flatline_index.setdefault(column,
                 self.__get_flatline_index(df[column]))
-            flts = flt_index.loc[flt_index['length']>th]
+            flts = flt_index.loc[flt_index['length']>=th]
             if len(flts) > 0:
                 flatlines[column] = flts
         if len(flatlines)>0:  # Flatlines detected
-            total_flatlines = [flts.shape[0] for flts in flatlines.values()]
+            total_flatlines = sum([flts.shape[0] for flts in flatlines.values()])
             self._warnings.add(
                 QualityWarning(
                     test='Flatlines', category='Valued Missing Values', priority=2, data=flatlines,
@@ -80,25 +83,22 @@ class VMVIdentifier(QualityEngine):
         df[self.__default_index_name] = df.index  # Index now in columns to be processed
         check_cols = set(df.columns).difference(set(skip))
         df = df[check_cols]
-        VMVs = pd.DataFrame(index=self.predefined_valued_missing_values, columns=check_cols)
-        for VMV in self.predefined_valued_missing_values:
+        VMVs = pd.DataFrame(index=self._VMVs, columns=check_cols)
+        for VMV in self._VMVs:
             VMVs.loc[VMV] = (df==VMV).sum()
-        VMVs.drop((VMVs.sum()==0).index, axis=1)
+        no_VMV_cols = VMVs.columns[VMVs.sum()==0]
+        no_VMV_rows = VMVs.index[VMVs.sum(axis=1)==0]
+        VMVs.drop(no_VMV_cols, axis=1, inplace=True)
+        VMVs.drop(no_VMV_rows, inplace=True)
         if VMVs.empty:
             print("[PREDEFINED VALUED MISSING VALUES] No predefined VMVs from  the set {} were found in the dataset.".format(
                 self.predefined_valued_missing_values
             ))
         else:
+            total_VMVs = VMVs.sum().sum()
             self._warnings.add(
                 QualityWarning(
                     test='Predefined Valued Missing Values', category='Valued Missing Values', priority=2, data=VMVs,
-                    description=f"Found {total_flatlines} VMVs in the dataset."
+                    description=f"Found {total_VMVs} VMVs in the dataset."
             ))
             return VMVs
-
-
-
-
-
-
-        
