@@ -97,4 +97,11 @@ class QualityEngine(ABC):
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
         self._warnings = set() # reset the warnings to avoid duplicates
-        return {test: getattr(self, test)() for test in self.tests}
+        results = {}
+        for test in self.tests:
+            try: # if anything fails
+                results[test] = getattr(self, test)()
+            except Exception as exc: # print a Warning and log the message
+                print(f'WARNING: Skipping test {test} due to failure during computation.')
+                results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
+        return results
