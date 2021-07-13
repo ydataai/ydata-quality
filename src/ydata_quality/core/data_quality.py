@@ -87,7 +87,6 @@ class DataQuality:
         "Prints a report containing all the warnings detected during the data quality analysis."
         # TODO: Provide a count of warnings by priority
         self.__store_warnings() # fetch all warnings from the engines
-        self._warnings = set(sorted(self.warnings)) # Sort the warnings by priority
-        for warn in self.warnings:
+        for warn in self.get_warnings():
             print(warn)
 
