@@ -76,11 +76,12 @@ class QualityEngine(ABC):
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
-        filtered = self.warnings # original set
+        filtered = list(self.warnings) # convert original set
         filtered = [w for w in filtered if w.category == category] if category else filtered
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        return set(filtered)
+        filtered.sort() # sort by priority
+        return filtered
 
     @property
     def tests(self):
