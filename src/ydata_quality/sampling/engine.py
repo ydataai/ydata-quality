@@ -1,15 +1,68 @@
 """
 Implementation of MissingProfiler engine to run missing value analysis.
 """
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pandas.core.algorithms import isin
+from pandas.io.parsers import read_fwf
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.modelling import infer_dtypes
+
+class ModelWrapper:
+    """Base class for model wrapper.
+    Define a Model instance to enable concept drift analysis with the Sampling engine."""
+
+    def __init__(self, model: Callable, test_x: Union[pd.Series, pd.DataFrame] = None):
+        self._model = model
+        self.__test_x = test_x
+        self.__test_model()
+
+    @property
+    def model(self):
+        """Passes the provided callable as the property model."""
+        return self._model
+
+    def __test_model(self):
+        """Tests the provided model if a test_x was provided, else passes.
+        The input is not tested since it is assured by the sampling engine.
+        A valid test output is a label series with the same number of rows as x.
+        Raises AssertionError if the model test fails."""
+        if isinstance(self.__test_x, Union[pd.Series, pd.DataFrame]):
+            output = self.model(self.__test_x)
+            assert isinstance(output, pd.Series), "The provided model failed to produce the expected output."
+            assert len(output) == self.__test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
+        else:
+            pass
+
+    @staticmethod
+    def _preprocess(x: pd.DataFrame):
+        """Performs any preprocessing of the model input.
+        By default returns input without any transformation.
+        Override to define custom preprocessing steps."""
+        return x
+
+    @staticmethod
+    def _postprocess(y: pd.Series):
+        """Performs any postprocessing of the models label predictions.
+        By default returns input without any transformation.
+        Override to define custom model predictions postprocessing steps."""
+        return y
+
+    def _predict(self, x: pd.DataFrame):
+        """Runs the provided callable model on pretransformed input."""
+        return self.model(x)
+
+    def __call__(self, x: pd.DataFrame) -> pd.Series:
+        """Returns a sample of labels predicted by the model from the covariate sample x.
+        The returned Series is expected to have the same number of rows as x."""
+        transformed_x = self._preprocess(x)
+        raw_y = self._predict(transformed_x)
+        return self._postprocess(raw_y)
 
 
 class SamplingAssistant(QualityEngine):
