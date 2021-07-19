@@ -1,43 +1,31 @@
 """
-Implementation of MissingProfiler engine to run missing value analysis.
+Implementation of DriftAnaliser engine to run missing value analysis.
 """
 from typing import Callable, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pandas.core.algorithms import isin
-from pandas.io.parsers import read_fwf
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.modelling import infer_dtypes
 
+
 class ModelWrapper:
     """Base class for model wrapper.
-    Define a Model instance to enable concept drift analysis with the Sampling engine."""
+    Defines a Model instance to enable concept drift analysis with the Sampling engine.
+    This class is meant to cover all functionality needed to interact with the engine.
+    Can be instantiated directly or inherited from a custom class.
+    In normal use only the preprocess and postprocess methods should need override."""
 
-    def __init__(self, model: Callable, test_x: Union[pd.Series, pd.DataFrame] = None):
+    def __init__(self, model: Callable):
         self._model = model
-        self.__test_x = test_x
-        self.__test_model()
 
     @property
     def model(self):
         """Passes the provided callable as the property model."""
         return self._model
-
-    def __test_model(self):
-        """Tests the provided model if a test_x was provided, else passes.
-        The input is not tested since it is assured by the sampling engine.
-        A valid test output is a label series with the same number of rows as x.
-        Raises AssertionError if the model test fails."""
-        if isinstance(self.__test_x, Union[pd.Series, pd.DataFrame]):
-            output = self.model(self.__test_x)
-            assert isinstance(output, pd.Series), "The provided model failed to produce the expected output."
-            assert len(output) == self.__test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
-        else:
-            pass
 
     @staticmethod
     def _preprocess(x: pd.DataFrame):
@@ -65,24 +53,29 @@ class ModelWrapper:
         return self._postprocess(raw_y)
 
 
-class SamplingAssistant(QualityEngine):
-    "Main class to run sampling quality analysis."
+class DriftAnalyser(QualityEngine):
+    "Main class to run drift test analysis."
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, holdout_size: float = 0.2):
+        label: Optional[str] = None, model: Callable = None, holdout_size: float = 0.2):
         """
+        Initializes the engine properties and lists tests for automated evaluation.
         Args:
-            ref (pd.DataFrame): reference sample used to run sampling analysis
-            sample (pd.DataFrame): an independent sample to test drift against the reference sample
-            label (str): defines a feature in the provided samples as label
-            holdout_size (float): Fraction to be kept as holdout for drift test
+            ref (pd.DataFrame): reference sample used to run sampling analysis, ideally the users dataset or a train dataset.
+            sample (Optional, pd.DataFrame): sample to test drift against the reference sample, can be new data, a slice of the train dataset or a test sample.
+            label (Optional, str): defines a feature in the provided samples as label.
+            model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of covariates.
+            holdout_size (float): Fraction to be kept as holdout for drift test.
         """
         super().__init__(df=ref)
         self._dtypes = None
         self.sample = sample
         self._label = label
+        self._model = model
+        self.has_model = None
         self._holdout, self._leftover = self._random_split(ref, holdout_size)
-        self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift', 'sample_label_drift']
+        self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
+            'sample_label_drift', 'sample_concept_drift']
 
     @property
     def label(self):
@@ -98,13 +91,13 @@ class SamplingAssistant(QualityEngine):
 
     @property
     def sample(self):
-        "Property that returns the provided independent sample."
+        "Returns the user provided test sample."
         return self._sample
 
     @sample.setter
     def sample(self, sample: pd.DataFrame):
         if sample is not None:
-            assert list(sample.columns).sort() == list(self.df.columns).sort(), "The reference and independent samples must share schema."
+            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and independent samples must share schema."
         self._sample = sample
 
     @property
@@ -132,52 +125,83 @@ class SamplingAssistant(QualityEngine):
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
+    @property
+    def has_model(self):
+        return self._has_model
+
+    @has_model.setter
+    def has_model(self, _):
+        try:
+            self._has_model = self.__test_model()
+        except AssertionError:
+            print("The provided model failed to produce output in the expected format during test and will not be used by the engine.")
+            self._has_model = False
+        except:
+            self._has_model = False
+
+    def __test_model(self):
+        """Tests the provided model wrapper.
+        Creates an example input from the provided samples.
+        A valid test output is a label series with the same number of rows as x.
+        Raises AssertionError if the model test fails.
+        Raises a general exception if the conditions for test were not met.
+        Please remove eventual label column from test_x before passing it to the test."""
+        if self.label and self._model is not None:
+            test_x = self.df.head().copy()
+            test_x.drop(self.label, axis=1, inplace=True)
+            output = self._model(test_x)
+            assert isinstance(output, (pd.Series, np.ndarray)), "The provided model failed to produce the expected output."
+            assert len(output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
+            return True
+        raise Exception
+
     @staticmethod
-    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float):
+    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True):
         """Shuffles sample and splits it into 2 partitions according to split_size.
         Returns a tuple with the split first (partition corresponding to split_size, and remaining second).
         Args:
-            sample (pd.DataFrame)
-            split_size (float): Fraction of the sample to be taken split"""
+            sample (pd.DataFrame): A sample to be split
+            split_size (float): Fraction of the sample to be taken split
+            shuffle (bool): If True shuffles sample rows before splitting"""
         assert 0<= split_size <=1, 'split_size must be a fraction, i.e. a float in the [0,1] interval.'
-        sample_shuffled = sample.sample(frac=1)  # Shuffle dataset rows
-        split_len = int(sample_shuffled.shape[0]*split_size)
-        split = sample_shuffled.iloc[:split_len]
-        remainder = sample_shuffled.iloc[split_len:]
+        if shuffle:
+            sample = sample.sample(frac=1)  # Shuffle dataset rows
+        split_len = int(sample.shape[0]*split_size)
+        split = sample.iloc[:split_len]
+        remainder = sample.iloc[split_len:]
         return split, remainder
 
     @staticmethod
-    def _chisq_2samp(ref_sample: pd.Series, test_sample: pd.Series):
-        """Asserts validity of performing chisquared test on test sample according to reference.
+    def _chisq_2samp(reference_data: pd.Series, test_data: pd.Series):
+        """Asserts validity of performing chisquared test on two samples.
         Tests the hypothesis that the test_sample follows ref_sample's distribution.
         Will raise an AssertionError in case the test is not valid.
+        Args:
+            reference_data (pd.Series): Reference data, used to compute degrees of freedom and expectation
+            test_data (pd.Series): Test data, compared to the reference data
         Returns:
             chi_stat (float): The chi squared statistic of this test
             p_val (float): The p-value of the tested hypothesis
         """
-        ref_unique_freqs = ref_sample.value_counts(normalize=True)
-        test_unique_counts = test_sample.value_counts()
+        ref_unique_freqs = reference_data.value_counts(normalize=True)
+        test_unique_counts = test_data.value_counts()
         assert set(test_unique_counts.index).issubset(set(ref_unique_freqs.index)),"test_sample contains categories unknown to the ref_sample"
-        test_expected_counts = ref_unique_freqs*len(test_sample)
+        test_expected_counts = ref_unique_freqs*len(test_data)
         assert sum(test_expected_counts<5)==0, "The test sample has categories with expected count below 5 (this sample is too small for chi-squared test)"
         chi_stat = sum(((test_unique_counts-test_expected_counts)**2)/test_expected_counts)
         p_val = 1-chi2_gen().cdf(x=chi_stat, df=len(ref_unique_freqs-1))
         return chi_stat, p_val
 
-    @staticmethod
-    def _ks_2samp(ref_sample: pd.Series, test_sample: pd.Series):
-        return ks_2samp(ref_sample, test_sample)
-
     def _2sample_feat_goof(self, ref_sample: pd.Series, test_sample: pd.Series):
         """Performs a goodness of fit test between 2 samples.
-        The column dtype of the sample and allows appropriate statistic test selection.
+        The column dtype of the samples allows for an appropriate statistic test selection.
         Returns tuple (statistic_value, p_value, test_name).
         If the statistic test raises an exception, (-1, None, test_name) is returned instead.
         Args:
             ref_sample (pd.Series): Reference sample (Relevant distinction for chi-squared test)
             test_sample (pd.Series): Test sample"""
         statistics = {'categorical': ('Chi-Squared', self._chisq_2samp),
-            'numerical': ('Kolmogorov-Smirnov', self._ks_2samp)}
+            'numerical': ('Kolmogorov-Smirnov', ks_2samp)}
         feat_dtype = self.dtypes[ref_sample.name]
         test_name, test = statistics[feat_dtype]
         try:
@@ -258,6 +282,8 @@ class SamplingAssistant(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test.
         """
+        if self.sample is None:
+            return "[SAMPLE LABEL DRIFT] To run sample covariate drift, a test sample must be provided. Test skipped."
         covariates = self.df.copy()
         test_sample = self.sample.copy()
         if self.label:
@@ -278,15 +304,13 @@ class SamplingAssistant(QualityEngine):
             self._warnings.add(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=2, data=test_summary,
-                    description=f"""{drifted_feats.sum()} features accused drift in the sample test.\n
-                    The covariates of the test sample do not appear to be representative of the reference sample."""
+                    description=f"""{drifted_feats.sum()} features accused drift in the sample test. The covariates of the test sample do not appear to be representative of the reference sample."""
             ))
         elif len(invalid_tests)>0:
             self._warnings.add(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=3, data=test_summary,
-                    description=f"""There were {invalid_tests.sum()} invalid tests found. This is likely due to a small test sample size.\n
-                    The data summary should be analyzed before considering the test conclusive."""
+                    description=f"""There were {invalid_tests.sum()} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
             ))
         else:
             print("[SAMPLE COVARIATE DRIFT] Covariate drift was not detected in the test sample.")
@@ -299,8 +323,8 @@ class SamplingAssistant(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test.
         """
-        if self.label not in self.sample.columns:
-            return  "[SAMPLE LABEL DRIFT] No label was provided in the test sample. Test skipped."
+        if self.sample is None or self.label is None or self.label not in self.sample.columns:
+            return "[SAMPLE LABEL DRIFT] To run sample label drift, a test sample must be provided with the defined label column. Test skipped."
         labels = self.df[self.label].copy()
         test_sample = self.sample[self.label].copy()
         stat_val, p_val, test_name = self._2sample_feat_goof(ref_sample = labels,
@@ -312,8 +336,7 @@ class SamplingAssistant(QualityEngine):
             self._warnings.add(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=2, data=test_summary,
-                    description=f"""The label accused drift in the sample test with a p-test of {p_val}, which is under the threshold {p_thresh}.\n
-                    The label of the test sample does not appear to be representative of the reference sample."""
+                    description=f"""The label accused drift in the sample test with a p-test of {p_val}, which is under the threshold {p_thresh}. The label of the test sample does not appear to be representative of the reference sample."""
             ))
         elif test_summary['Verdict']=='Invalid test':
             self._warnings.add(
@@ -323,4 +346,41 @@ class SamplingAssistant(QualityEngine):
             ))
         else:
             print("[SAMPLE LABEL DRIFT] Label drift was not detected in the test sample.")
+        return test_summary
+
+    def sample_concept_drift(self, p_thresh: float= 0.05):
+        """Detecs concept drift in the test sample resorting to a user provided model wrapper.
+        Results may not be conclusive without first testing if the test sample has label or covariate drift.
+        A p-value below the adjusted threshold indicates test sample concept drift, raising a warning.
+        The label dtype is used to decide the test to be applied (chi squared or KS).
+        Args:
+            p_thresh (float): The p_threshold used for the test.
+        """
+        if not self.has_model or self.sample is None:
+            return "[CONCEPT DRIFT] To run concept drift, a valid model, a test sample and label column must be provided. Test skipped."
+        ref_sample = self.df.copy()
+        test_sample = self.sample.copy()
+        ref_sample.drop(self.label, axis=1, inplace=True)
+        test_sample.drop(self.label, axis=1, inplace=True)
+        ref_preds = pd.Series(self._model(ref_sample), name=self.label)
+        test_preds = pd.Series(self._model(test_sample), name=self.label)
+        stat_val, p_val, test_name = self._2sample_feat_goof(ref_sample = ref_preds,
+            test_sample = test_preds)
+        test_summary = pd.Series(data=[test_name, stat_val, p_val, None],
+            index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
+        test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val>= 0 else 'Invalid test')
+        if test_summary['Verdict']=='Drift':
+            self._warnings.add(
+                QualityWarning(
+                    test='Concept drift', category='Sampling', priority=2, data=test_summary,
+                    description=f"""There was concept drift detected with a p-test of {p_val}, which is under the threshold {p_thresh}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample."""
+            ))
+        elif test_summary['Verdict']=='Invalid test':
+            self._warnings.add(
+                QualityWarning(
+                    test='Concept drift', category='Sampling', priority=3, data=test_summary,
+                    description=f"""The test was invalid. This is likely due to a small test sample size."""
+            ))
+        else:
+            print("[CONCEPT DRIFT] Concept drift was not detected between the reference and the test samples.")
         return test_summary
