@@ -70,52 +70,13 @@ class DriftAnalyser(QualityEngine):
             model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
             holdout_size (float): Fraction to be kept as holdout for drift test.
         """
-        super().__init__(df=ref)
-        self._dtypes = None
+        super().__init__(df=ref, label=label)
         self.sample = sample
-        self._label = label
         self._model = model
         self.has_model = None
         self._holdout, self._leftover = self._random_split(ref, holdout_size)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
-
-    @property
-    def label(self):
-        "Property that returns the label under inspection."
-        return self._label
-
-    @label.setter
-    def label(self, label: str):
-        if not isinstance(label, str):
-            raise ValueError("Property 'label' should be a string.")
-        assert label in self.df.columns, "Given label should exist as a DataFrame column."
-        self._label = label
-
-    @property
-    def dtypes(self):
-        "Infered dtypes for the dataset."
-        if self._dtypes is None:
-            self._dtypes = infer_dtypes(self.df)
-        return self._dtypes
-
-    @dtypes.setter
-    def dtypes(self, dtypes: dict):
-        if not isinstance(dtypes, dict):
-            raise ValueError("Property 'dtypes' should be a dictionary.")
-        assert all(col in self.df.columns for col in dtypes), "All dtypes keys \
-            must be columns in the dataset."
-        supported_dtypes = ['numerical', 'categorical']
-        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes\
-             must be in the supported broad dtype list: {}.".format(supported_dtypes)
-        df_col_set = set(self.df.columns)
-        dtypes_col_set = set(dtypes.keys())
-        missing_cols = df_col_set.difference(dtypes_col_set)
-        if missing_cols:
-            _dtypes = infer_dtypes(self.df, skip=df_col_set.difference(missing_cols))
-            for col, dtype in _dtypes.items():
-                dtypes[col] = dtype
-        self._dtypes = dtypes
 
     @property
     def sample(self):

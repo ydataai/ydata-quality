@@ -26,45 +26,8 @@ class SharedLabelInspector(QualityEngine):
     """Shared structure for Numerical/Categorical Label Inspector"""
 
     def __init__(self, df: pd.DataFrame, label: str):
-        super().__init__(df)  # Runs init from the Quality Engine
-        self._label = label
-        self._dtypes = infer_dtypes(self.df)
+        super().__init__(df=df, label=label)
         self._tdf = None
-
-    @property
-    def label(self):
-        "Property that returns the label under inspection."
-        return self._label
-
-    @label.setter
-    def label(self, label: str):
-        if not isinstance(label, str):
-            raise ValueError("Property 'label' should be a string.")
-        assert label in self.df.columns, "Given label should exist as a DataFrame column."
-        self._label = label
-
-    @property
-    def dtypes(self):
-        "Property that returns infered dtypes for the dataset."
-        return self._dtypes
-
-    @dtypes.setter
-    def dtypes(self, dtypes: dict):
-        if not isinstance(dtypes, dict):
-            raise ValueError("Property 'dtypes' should be a dictionary.")
-        assert all(col in self.df.columns for col in dtypes), "All dtypes keys \
-            must be columns in the dataset."
-        supported_dtypes = ['numerical', 'categorical']
-        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes\
-             must be in the supported broad dtype list: {}.".format(supported_dtypes)
-        df_col_set = set(self.df.columns)
-        dtypes_col_set = set(dtypes.keys())
-        missing_cols = df_col_set.difference(dtypes_col_set)
-        if missing_cols:
-            _dtypes = infer_dtypes(self.df, skip=df_col_set.difference(missing_cols))
-            for col, dtype in _dtypes.items():
-                dtypes[col] = dtype
-        self._dtypes = dtypes
 
     @property
     def tdf(self):
@@ -113,7 +76,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
     Ordinal labels can be handled if passed as categorical."""
 
     def __init__(self, df: pd.DataFrame, label: str):
-        super().__init__(df, label)
+        super().__init__(df=df, label=label)
         self._centroids = None
         self._tests = ["missing_labels", "few_labels", "unbalanced_classes",
         "one_vs_rest_performance", "outlier_detection"]
