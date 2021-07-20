@@ -1,5 +1,5 @@
 """
-Implementation of DriftAnaliser engine to run missing value analysis.
+Implementation of DriftAnalyser engine to run data drift analysis.
 """
 from typing import Callable, Optional, Union
 
@@ -43,7 +43,10 @@ class ModelWrapper:
 
     def _predict(self, x: pd.DataFrame):
         """Runs the provided callable model on pretransformed input."""
-        return self.model(x)
+        if hasattr(self.model, "predict"):  # Sklearn and tensorflow model standards
+            return self.model.predict(x)
+        else:  # Pytorch and other __call__ prediction standards
+            return self.model(x)
 
     def __call__(self, x: pd.DataFrame) -> pd.Series:
         """Returns a sample of labels predicted by the model from the covariate sample x.
@@ -64,7 +67,7 @@ class DriftAnalyser(QualityEngine):
             ref (pd.DataFrame): reference sample used to run sampling analysis, ideally the users dataset or a train dataset.
             sample (Optional, pd.DataFrame): sample to test drift against the reference sample, can be new data, a slice of the train dataset or a test sample.
             label (Optional, str): defines a feature in the provided samples as label.
-            model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of covariates.
+            model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
             holdout_size (float): Fraction to be kept as holdout for drift test.
         """
         super().__init__(df=ref)
@@ -90,17 +93,6 @@ class DriftAnalyser(QualityEngine):
         self._label = label
 
     @property
-    def sample(self):
-        "Returns the user provided test sample."
-        return self._sample
-
-    @sample.setter
-    def sample(self, sample: pd.DataFrame):
-        if sample is not None:
-            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and independent samples must share schema."
-        self._sample = sample
-
-    @property
     def dtypes(self):
         "Infered dtypes for the dataset."
         if self._dtypes is None:
@@ -124,6 +116,17 @@ class DriftAnalyser(QualityEngine):
             for col, dtype in _dtypes.items():
                 dtypes[col] = dtype
         self._dtypes = dtypes
+
+    @property
+    def sample(self):
+        "Returns the user provided test sample."
+        return self._sample
+
+    @sample.setter
+    def sample(self, sample: pd.DataFrame):
+        if sample is not None:
+            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and independent samples must share schema."
+        self._sample = sample
 
     @property
     def has_model(self):
@@ -228,8 +231,8 @@ class DriftAnalyser(QualityEngine):
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
         perc_index = ["{0:.0%}".format(fraction) for fraction in leftover_fractions]
         control_metric = pd.Series(index=perc_index)
-        all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
+        all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         for i, fraction in enumerate(leftover_fractions):
             downsample, _ = self._random_split(covariates, fraction)
             p_vals = []
@@ -239,15 +242,13 @@ class DriftAnalyser(QualityEngine):
                 p_vals.append(p_val)
             all_p_vals.iloc[i] = p_vals
             control_metric.iloc[i] = 100*len([p for p in p_vals if p > bonferroni_p])/len(p_vals)
+        all_p_vals['Corrected p-value threshold'] = bonferroni_p
         control_metric.plot(title='Reference sample covariate features no drift(%)',
             xlabel='Percentage of remaining sample used',
-            ylabel='Percentage of no drift features')
-        all_p_vals['Corrected p-value threshold'] = bonferroni_p
-        all_p_vals.plot(title='Reference sample covariate features test p_values',
-            xlabel='Percentage of remaining sample used',
-            ylabel='Test p-value',
-            logy=True)
+            ylabel='Percentage of no drift features',
+            ylim = (0, 104), style='.-')
         plt.show()
+        return all_p_vals
 
     def ref_label_drift(self, p_thresh: float= 0.05):
         """Controls label drift in the reference sample (df).
@@ -271,7 +272,7 @@ class DriftAnalyser(QualityEngine):
         p_values['p-value threshold'] = p_thresh
         p_values.plot(title='Reference sample label p-values',
             xlabel='Percentage of remaining sample used',
-            ylabel=f'{test_name} test p-value')
+            ylabel=f'{test_name} test p-value', style='.-')
         plt.show()
 
     def sample_covariate_drift(self, p_thresh: float= 0.05):
@@ -298,19 +299,19 @@ class DriftAnalyser(QualityEngine):
             test_summary.loc[column] = [test_name, stat_val, p_val, None]
         test_summary['Verdict'] = test_summary['p-value'].apply(
             lambda x: 'OK' if x > bonferroni_p else ('Drift' if x>= 0 else 'Invalid test'))
-        drifted_feats = test_summary['Verdict']=='Drift'
-        invalid_tests = test_summary['Verdict']=='Invalid test'
-        if len(drifted_feats)>0:
+        n_drifted_feats = sum(test_summary['Verdict']=='Drift')
+        n_invalid_tests = sum(test_summary['Verdict']=='Invalid test')
+        if n_drifted_feats>0:
             self._warnings.add(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=2, data=test_summary,
-                    description=f"""{drifted_feats.sum()} features accused drift in the sample test. The covariates of the test sample do not appear to be representative of the reference sample."""
+                    description=f"""{n_drifted_feats} features accused drift in the sample test. The covariates of the test sample do not appear to be representative of the reference sample."""
             ))
-        elif len(invalid_tests)>0:
+        elif n_invalid_tests>0:
             self._warnings.add(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=3, data=test_summary,
-                    description=f"""There were {invalid_tests.sum()} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
+                    description=f"""There were {n_invalid_tests} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
             ))
         else:
             print("[SAMPLE COVARIATE DRIFT] Covariate drift was not detected in the test sample.")
