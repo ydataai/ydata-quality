@@ -1,7 +1,7 @@
 """
 Implementation of main class for Data Quality checks.
 """
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Callable
 
 import pandas as pd
 
@@ -10,15 +10,18 @@ from ydata_quality.duplicates import DuplicateChecker
 from ydata_quality.labelling import LabelInspector
 from ydata_quality.missings import MissingsProfiler
 from ydata_quality.valued_missing_values import VMVIdentifier
+from ydata_quality.drift import DriftAnalyser
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
 
     def __init__(self,
                     df: pd.DataFrame,
-                    target: str = None,
+                    label: str = None,
                     entities: List[Union[str, List[str]]] = [],
-                    vmv_extensions: Optional[list]=[]
+                    vmv_extensions: Optional[list]=[],
+                    sample: Optional[pd.DataFrame] = None,
+                    model: Callable = None
                     ):
         """
         Engines:
@@ -26,23 +29,32 @@ class DataQuality:
         - Missing Values
         - Labelling
         - Valued Missing Values
+        - Drift Analysis
 
         Args:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
-            target (str, optional): [MISSINGS, LABELLING] target feature, to be predicted.
+            label (str, optional): [MISSINGS, LABELLING] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
+            sample: [DRIFT ANALYSIS] data against which drift is tested.
+            model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
         """
         self.df = df
-        self._target = target
-        self._engines = {
-            'duplicates': DuplicateChecker(df=df, entities=entities),
-            'missings': MissingsProfiler(df=df, target=target),
-            'labelling': LabelInspector(df=df, label=target),
-            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions)
-        }
         self._warnings = set()
+        self._engines = { # Default list of engines
+            'duplicates': DuplicateChecker(df=df, entities=entities),
+            'missings': MissingsProfiler(df=df, target=label),
+            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions),
+            'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model)
+        }
+
+        # Engines based on mandatory arguments
+        if label is not None:
+            self._engines['labelling'] = LabelInspector(df=df, label=label)
+        else:
+            print('Label is not defined. Skipping LABELLING engine.')
+
 
     @property
     def warnings(self):
@@ -71,14 +83,8 @@ class DataQuality:
         for engine in self.engines.values():
             self._warnings = self._warnings.union(set(engine.get_warnings()))
 
-    def __trim_engines(self):
-        "Heuristics to activate/deactivate individual engines from running."
-        if self._target is None: # doesn't run labelling engine if target is not specified
-            self._engines.pop('labelling')
-
     def evaluate(self):
         "Runs all the individual data quality checks and aggregates the results."
-        self.__trim_engines()
         results = {name: engine.evaluate() for name, engine in self.engines.items()}
         self.__store_warnings()
         return results

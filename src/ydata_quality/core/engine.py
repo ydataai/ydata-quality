@@ -5,8 +5,7 @@ from abc import ABC
 from typing import Optional
 
 import pandas as pd
-from ydata_quality.core import QualityWarning
-from ydata_quality.core.warnings import Priority
+from ydata_quality.core.warnings import QualityWarning, Priority
 from ydata_quality.utils.modelling import infer_dtypes
 
 class QualityEngine(ABC):
