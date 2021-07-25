@@ -5,8 +5,7 @@ from abc import ABC
 from typing import Optional
 
 import pandas as pd
-from ydata_quality.core import QualityWarning
-from ydata_quality.core.warnings import Priority
+from ydata_quality.core.warnings import QualityWarning, Priority
 from ydata_quality.utils.modelling import infer_dtypes
 
 class QualityEngine(ABC):
@@ -76,11 +75,12 @@ class QualityEngine(ABC):
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
-        filtered = self.warnings # original set
+        filtered = list(self.warnings) # convert original set
         filtered = [w for w in filtered if w.category == category] if category else filtered
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        return set(filtered)
+        filtered.sort() # sort by priority
+        return filtered
 
     @property
     def tests(self):
@@ -97,4 +97,11 @@ class QualityEngine(ABC):
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
         self._warnings = set() # reset the warnings to avoid duplicates
-        return {test: getattr(self, test)() for test in self.tests}
+        results = {}
+        for test in self.tests:
+            try: # if anything fails
+                results[test] = getattr(self, test)()
+            except Exception as exc: # print a Warning and log the message
+                print(f'WARNING: Skipping test {test} due to failure during computation.')
+                results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
+        return results

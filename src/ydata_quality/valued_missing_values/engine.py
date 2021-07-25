@@ -24,7 +24,7 @@ class VMVIdentifier(QualityEngine):
         self._flatline_index = {}
         self.__default_index_name = '__index'
         self.vmvs = vmv_extensions
-    
+
     @property
     def default_vmvs(self):
         """Returns the default list of Valued Missing Values.
@@ -61,7 +61,7 @@ class VMVIdentifier(QualityEngine):
             if column_name == self.__default_index_name:
                 df[self.__default_index_name] = df.index  # Index now in columns to be processed next
             column  = df[column_name]
-            column.fillna('__filled')  # So NaN values are considered 
+            column.fillna('__filled')  # So NaN values are considered
             sequence_indexes = column.ne(column.shift()).cumsum()  # Everytime shifted value is different from previous a new sequence starts
             sequence_groups = column.index.to_series().groupby(sequence_indexes)  # Group series indexes by sequence indexes
             data = {'length': sequence_groups.count().values,
@@ -102,7 +102,6 @@ class VMVIdentifier(QualityEngine):
         Raises warning based on the existence of these values.
         VMVs of string type are case insensitive during search.
         Returns a DataFrame with count distribution for each predefined type over each column.
-        The result DataFrame will ommit any 
         Arguments:
             skip: List of columns that will not be target of search for vmvs.
                 Pass '__index' in skip to skip looking for flatlines at the index.
@@ -122,7 +121,7 @@ class VMVIdentifier(QualityEngine):
             vmvs.drop(no_vmv_rows, inplace=True)
         if vmvs.empty:
             print("[PREDEFINED VALUED MISSING VALUES] No predefined vmvs from  the set {} were found in the dataset.".format(
-                self.predefined_valued_missing_values
+                self.vmvs
             ))
         else:
             total_vmvs = vmvs.sum().sum()

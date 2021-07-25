@@ -9,7 +9,6 @@ import pandas as pd
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
 from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.modelling import infer_dtypes
 
 
 class ModelWrapper:
