@@ -33,7 +33,7 @@ class DataQuality:
 
         Args:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
-            label (str, optional): [MISSINGS, LABELLING] target feature to be predicted.
+            label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
