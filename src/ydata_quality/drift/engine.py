@@ -57,7 +57,15 @@ class ModelWrapper:
 
 
 class DriftAnalyser(QualityEngine):
-    "Main class to run drift test analysis."
+    """Main class to run drift test analysis.
+
+    Methods:
+        ref_covariate_drift: controls covariate drift in reference subsamples.
+        ref_label_drift: controls label drift in the reference subsamples.
+        sample_covariate_drift: detects covariate drift in the test sample, measured against the full reference sample.
+        sample_label_drift: detects label drift in the test sample, measured against the full reference sample.
+        sample_concept_drift: detects concept drift in the test sample based on a wrapped model provided by the user.
+    """
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
         label: Optional[str] = None, model: Callable = None, holdout_size: float = 0.2):
@@ -279,7 +287,7 @@ class DriftAnalyser(QualityEngine):
         return test_summary
 
     def sample_label_drift(self, p_thresh: float= 0.05):
-        """Detecs label drift in the test sample (measured against the full reference sample).
+        """Detects label drift in the test sample (measured against the full reference sample).
         A p-value below the adjusted threshold indicates test sample drift, raising a warning.
         The label dtype is used to decide the test to be applied (chi squared or KS).
         Args:
@@ -311,7 +319,7 @@ class DriftAnalyser(QualityEngine):
         return test_summary
 
     def sample_concept_drift(self, p_thresh: float= 0.05):
-        """Detecs concept drift in the test sample resorting to a user provided model wrapper.
+        """Detects concept drift in the test sample resorting to a user provided model wrapper.
         Results may not be conclusive without first testing if the test sample has label or covariate drift.
         A p-value below the adjusted threshold indicates test sample concept drift, raising a warning.
         The label dtype is used to decide the test to be applied (chi squared or KS).
