@@ -67,7 +67,8 @@ class DriftAnalyser(QualityEngine):
     """
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, model: Callable = None, holdout_size: float = 0.2):
+        label: Optional[str] = None, model: Callable = None, holdout_size: float = 0.2,
+        random_seed: Optional[int] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:
@@ -76,12 +77,14 @@ class DriftAnalyser(QualityEngine):
             label (Optional, str): defines a feature in the provided samples as label.
             model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
             holdout_size (float): Fraction to be kept as holdout for drift test.
+            random_seed (Optional, int): seed used to guarantee reproducibility of the random sample splits. Defaults to None (no reproducibility).
         """
         super().__init__(df=ref, label=label)
         self.sample = sample
         self._model = model
         self.has_model = None
-        self._holdout, self._leftover = self._random_split(ref, holdout_size)
+        self._random_seed = random_seed
+        self._holdout, self._leftover = self._random_split(ref, holdout_size, random_seed=self._random_seed)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
 
@@ -127,16 +130,18 @@ class DriftAnalyser(QualityEngine):
         raise Exception
 
     @staticmethod
-    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True):
+    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True, random_seed: int=None):
         """Shuffles sample and splits it into 2 partitions according to split_size.
         Returns a tuple with the split first (partition corresponding to split_size, and remaining second).
         Args:
             sample (pd.DataFrame): A sample to be split
             split_size (float): Fraction of the sample to be taken split
-            shuffle (bool): If True shuffles sample rows before splitting"""
+            shuffle (bool): If True shuffles sample rows before splitting
+            random_seed (int): If an int is passed, the random process is reproducible"""
         assert 0<= split_size <=1, 'split_size must be a fraction, i.e. a float in the [0,1] interval.'
-        if shuffle:
-            sample = sample.sample(frac=1)  # Shuffle dataset rows
+        assert random_seed is None or isinstance(random_seed, int), 'The random seed must be an integer or None.'
+        if shuffle:  # Shuffle dataset rows
+            sample = sample.sample(frac=1, random_state=random_seed)  # An int random_seed ensures reproducibility
         split_len = int(sample.shape[0]*split_size)
         split = sample.iloc[:split_len]
         remainder = sample.iloc[split_len:]
@@ -202,11 +207,11 @@ class DriftAnalyser(QualityEngine):
         bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
         all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         for i, fraction in enumerate(leftover_fractions):
-            downsample, _ = self._random_split(covariates, fraction)
+            downsample, _ = self._random_split(covariates, fraction, random_seed=self._random_seed)
             p_vals = []
             for column in covariates.columns:
-                _, p_val, _ = self._2sample_feat_goof(ref_sample = downsample[column],
-                    test_sample = holdout[column])
+                _, p_val, _ = self._2sample_feat_goof(ref_sample = holdout[column],
+                    test_sample = downsample[column])
                 p_vals.append(p_val)
             all_p_vals.iloc[i] = p_vals
             control_metric.iloc[i] = 100*len([p for p in p_vals if p > bonferroni_p])/len(p_vals)
@@ -233,9 +238,9 @@ class DriftAnalyser(QualityEngine):
         p_values = pd.DataFrame(index=["{0:.0%}".format(fraction) for fraction in leftover_fractions],
             columns=['Label p-value', 'p-value threshold'])
         for i, fraction in enumerate(leftover_fractions):
-            downsample, _ = self._random_split(labels, fraction)
-            _, p_val, test_name = self._2sample_feat_goof(ref_sample = downsample,
-                test_sample = holdout)
+            downsample, _ = self._random_split(labels, fraction, random_seed=self._random_seed)
+            _, p_val, test_name = self._2sample_feat_goof(ref_sample = holdout,
+                test_sample = downsample)
             p_values['Label p-value'].iloc[i] = p_val
         p_values['p-value threshold'] = p_thresh
         p_values.plot(title='Reference sample label p-values',
