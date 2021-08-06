@@ -1,9 +1,8 @@
 """
-Tools to check dataset for data drifting.
+Tools to check dataset for data errors.
 """
-from ydata_quality.drift.engine import DriftAnalyser, ModelWrapper
+from ydata_quality.data_errors.engine import DataErrorSearcher
 
 __all__ = [
-    "DriftAnalyser",
-    "ModelWrapper"
+    "DataErrorSearcher"
 ]
