@@ -15,6 +15,9 @@ class DataExpectationsReporter(QualityEngine):
     Supports standard Great Expectations json reports from expectation suite validation runs.
     """
 
+    def __init__(self):
+        return  # Override the base class init method
+
     @property
     def tests(self):
         raise NotImplementedError  # Override the base class property
@@ -37,18 +40,18 @@ class DataExpectationsReporter(QualityEngine):
         deviation = observed - nearest_bound
         if range_width != 0:
             range_deviations = deviation/range_width
+            range_deviation_string = "\n\t- The observed deviation is of {:.1f} min-max ranges.".format(range_deviations)
         if nearest_bound != 0:
             bound_deviations = deviation/nearest_bound
-        range_deviation_string = "\n\t- The observed deviation is of {:.1f} min-max ranges.".format(range_deviations)
-        bound_deviation_string = "\n\t- The observed value is {:.0%} deviated from the nearest bound of the expected\
+            bound_deviation_string = "\n\t- The observed value is {:.0%} deviated from the nearest bound of the expected\
  range.".format(bound_deviations)
         self.store_warning(
             QualityWarning(
                 test='Expectation assessment - Value Between', category='Data Expectations',priority=3,
                 data=(range_deviations, bound_deviations),
                 description="The observed value is outside of the expected range."
-                +(range_deviation_string if range_deviation_string else "")
-                +(bound_deviation_string if bound_deviation_string else "")
+                +(range_deviation_string if range_deviations else "")
+                +(bound_deviation_string if bound_deviations else "")
             )
         )
         return (range_deviations, bound_deviations)
@@ -74,7 +77,7 @@ class DataExpectationsReporter(QualityEngine):
             }
             expectation_kwargs = expectation_results['expectation_config']['kwargs']
             expectation_summary['is_table_expectation'] = expectation_summary['type'].startswith("expect_table_")
-            expectation_summary['column_kwargs'] = {k:v for k, v in expectation_kwargs if k.startswith('column')}
+            expectation_summary['column_kwargs'] = {k:v for k, v in expectation_kwargs.items() if k.startswith('column')}
             results_summary["EXPECTATIONS"][idx_] = expectation_summary
         overall_results = {'expectation_count': len(results_summary["EXPECTATIONS"]),
         "total_successes": sum([True for summary in results_summary["EXPECTATIONS"].values() if summary['success']])}
@@ -92,7 +95,7 @@ class DataExpectationsReporter(QualityEngine):
             df (pd.DataFrame): The Pandas DataFrame that ran against the expectation suite, used to evaluate coverage.
         """
         results_summary = self._summarize_results(results_json_path)
-        df_column_set = set(df.columns())
+        df_column_set = set(df.columns)
         column_coverage = set()
         for summary in results_summary['EXPECTATIONS'].values():
             if summary['is_table_expectation']:
@@ -126,7 +129,7 @@ columns, which is below the expected coverage of {:.0%}.".format(
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol."""
         results_summary = self._summarize_results(results_json_path)
         overall_results = results_summary['OVERALL']
-        failed_expectation_idxs = [i for i, exp in enumerate(results_summary['EXPECTATIONS']) if not exp['success']]
+        failed_expectation_idxs = [i for i, exp in enumerate(results_summary['EXPECTATIONS'].values()) if not exp['success']]
         if rel_error_tol:
             error_tol = overall_results['expectation_count']*rel_error_tol
         if overall_results['expectation_count'] - overall_results['total_successes'] > error_tol:
@@ -172,15 +175,13 @@ failed expectations.".format(
             minimum_coverage (float): Minimum expected fraction of DataFrame columns covered by the expectation suite.
         """
         self._warnings = set() # reset the warnings to avoid duplicates
-        results_summary = self._summarize_results(results_json_path)
         df = df if isinstance(df, pd.DataFrame) else None
         results = {}
-        results['Overall Assessment'] = self._overall_assessment(results_summary, error_tol, rel_error_tol)
-        if df:
+        results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
+        if df is not None:
             results['Coverage Fraction'] = self._coverage_fraction(
-                results_summary, df, minimum_coverage=minimum_coverage)
+                results_json_path, df, minimum_coverage=minimum_coverage)
         else:
             print("A valid DataFrame was not passed, skipping coverage fraction test.")
-        results['Expectation level assessment'] = self._expectation_level_assessment(results_summary)
+        results['Expectation level assessment'] = self._expectation_level_assessment(results_json_path)
         return results
-        
