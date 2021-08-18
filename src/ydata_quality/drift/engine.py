@@ -67,24 +67,24 @@ class DriftAnalyser(QualityEngine):
     """
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, model: Callable = None, holdout_size: float = 0.2,
-        random_seed: Optional[int] = None):
+        label: Optional[str] = None, model: Callable = None, holdout: float = 0.2,
+        random_state: Optional[int] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:
-            ref (pd.DataFrame): reference sample used to run sampling analysis, ideally the users dataset or a train dataset.
-            sample (Optional, pd.DataFrame): sample to test drift against the reference sample, can be new data, a slice of the train dataset or a test sample.
-            label (Optional, str): defines a feature in the provided samples as label.
-            model (Optional, ModelWrapper): a custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
-            holdout_size (float): Fraction to be kept as holdout for drift test.
-            random_seed (Optional, int): seed used to guarantee reproducibility of the random sample splits. Defaults to None (no reproducibility).
+            ref (pd.DataFrame): Reference sample used to run sampling analysis, ideally the users dataset or a train dataset.
+            sample (Optional, pd.DataFrame): Sample to test drift against the reference sample, can be new data, a slice of the train dataset or a test sample.
+            label (Optional, str): Defines a feature in the provided samples as label.
+            model (Optional, ModelWrapper): A custom model wrapped by the ModelWrapper class. The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
+            holdout (float): Fraction to be kept as holdout for drift test.
+            random_state (Optional, int): Seed used to guarantee reproducibility of the random sample splits. Defaults to None (no reproducibility).
         """
         super().__init__(df=ref, label=label)
         self.sample = sample
         self._model = model
         self.has_model = None
-        self._random_seed = random_seed
-        self._holdout, self._leftover = self._random_split(ref, holdout_size, random_seed=self._random_seed)
+        self._random_state = random_state
+        self._holdout, self._leftover = self._random_split(ref, holdout, random_state=self._random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
 
@@ -96,7 +96,7 @@ class DriftAnalyser(QualityEngine):
     @sample.setter
     def sample(self, sample: pd.DataFrame):
         if sample is not None:
-            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and independent samples must share schema."
+            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and test samples must share schema."
         self._sample = sample
 
     @property
@@ -118,8 +118,7 @@ class DriftAnalyser(QualityEngine):
         Creates an example input from the provided samples.
         A valid test output is a label series with the same number of rows as x.
         Raises AssertionError if the model test fails.
-        Raises a general exception if the conditions for test were not met.
-        Please remove eventual label column from test_x before passing it to the test."""
+        Raises a general exception if the conditions for test were not met."""
         if self.label and self._model is not None:
             test_x = self.df.head().copy()
             test_x.drop(self.label, axis=1, inplace=True)
@@ -130,18 +129,18 @@ class DriftAnalyser(QualityEngine):
         raise Exception
 
     @staticmethod
-    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True, random_seed: int=None):
+    def _random_split(sample: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True, random_state: int=None):
         """Shuffles sample and splits it into 2 partitions according to split_size.
         Returns a tuple with the split first (partition corresponding to split_size, and remaining second).
         Args:
             sample (pd.DataFrame): A sample to be split
-            split_size (float): Fraction of the sample to be taken split
+            split_size (float): Fraction of the sample to be taken
             shuffle (bool): If True shuffles sample rows before splitting
-            random_seed (int): If an int is passed, the random process is reproducible"""
+            random_state (int): If an int is passed, the random process is reproducible using the provided seed"""
         assert 0<= split_size <=1, 'split_size must be a fraction, i.e. a float in the [0,1] interval.'
-        assert random_seed is None or isinstance(random_seed, int), 'The random seed must be an integer or None.'
+        assert random_state is None or isinstance(random_state, int), 'The random seed must be an integer or None.'
         if shuffle:  # Shuffle dataset rows
-            sample = sample.sample(frac=1, random_state=random_seed)  # An int random_seed ensures reproducibility
+            sample = sample.sample(frac=1, random_state=random_state)  # An int random_state ensures reproducibility
         split_len = int(sample.shape[0]*split_size)
         split = sample.iloc[:split_len]
         remainder = sample.iloc[split_len:]
@@ -150,7 +149,7 @@ class DriftAnalyser(QualityEngine):
     @staticmethod
     def _chisq_2samp(reference_data: pd.Series, test_data: pd.Series):
         """Asserts validity of performing chisquared test on two samples.
-        Tests the hypothesis that the test_sample follows ref_sample's distribution.
+        Tests the hypothesis that test_data follows reference_data's distribution.
         Will raise an AssertionError in case the test is not valid.
         Args:
             reference_data (pd.Series): Reference data, used to compute degrees of freedom and expectation
@@ -161,7 +160,7 @@ class DriftAnalyser(QualityEngine):
         """
         ref_unique_freqs = reference_data.value_counts(normalize=True)
         test_unique_counts = test_data.value_counts()
-        assert set(test_unique_counts.index).issubset(set(ref_unique_freqs.index)),"test_sample contains categories unknown to the ref_sample"
+        assert set(test_unique_counts.index).issubset(set(ref_unique_freqs.index)),"Provided test_sample contains categories unknown to the ref_sample"
         test_expected_counts = ref_unique_freqs*len(test_data)
         assert sum(test_expected_counts<5)==0, "The test sample has categories with expected count below 5 (this sample is too small for chi-squared test)"
         chi_stat = sum(((test_unique_counts-test_expected_counts)**2)/test_expected_counts)
@@ -207,7 +206,7 @@ class DriftAnalyser(QualityEngine):
         bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
         all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         for i, fraction in enumerate(leftover_fractions):
-            downsample, _ = self._random_split(covariates, fraction, random_seed=self._random_seed)
+            downsample, _ = self._random_split(covariates, fraction, random_state=self._random_state)
             p_vals = []
             for column in covariates.columns:
                 _, p_val, _ = self._2sample_feat_goof(ref_sample = holdout[column],
@@ -238,7 +237,7 @@ class DriftAnalyser(QualityEngine):
         p_values = pd.DataFrame(index=["{0:.0%}".format(fraction) for fraction in leftover_fractions],
             columns=['Label p-value', 'p-value threshold'])
         for i, fraction in enumerate(leftover_fractions):
-            downsample, _ = self._random_split(labels, fraction, random_seed=self._random_seed)
+            downsample, _ = self._random_split(labels, fraction, random_state=self._random_state)
             _, p_val, test_name = self._2sample_feat_goof(ref_sample = holdout,
                 test_sample = downsample)
             p_values['Label p-value'].iloc[i] = p_val
@@ -310,7 +309,7 @@ class DriftAnalyser(QualityEngine):
             self._warnings.add(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=2, data=test_summary,
-                    description=f"""The label accused drift in the sample test with a p-test of {p_val}, which is under the threshold {p_thresh}. The label of the test sample does not appear to be representative of the reference sample."""
+                    description="""The label accused drift in the sample test with a p-test of {:.4f}, which is under the threshold {:.2f}. The label of the test sample does not appear to be representative of the reference sample.""".format(p_val, p_thresh)
             ))
         elif test_summary['Verdict']=='Invalid test':
             self._warnings.add(
@@ -347,7 +346,7 @@ class DriftAnalyser(QualityEngine):
             self._warnings.add(
                 QualityWarning(
                     test='Concept drift', category='Sampling', priority=2, data=test_summary,
-                    description=f"""There was concept drift detected with a p-test of {p_val}, which is under the threshold {p_thresh}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample."""
+                    description="""There was concept drift detected with a p-test of {:.4f}, which is under the threshold {:.2f}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample.""".format(p_val, p_thresh)
             ))
         elif test_summary['Verdict']=='Invalid test':
             self._warnings.add(
