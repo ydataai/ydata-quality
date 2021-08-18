@@ -17,10 +17,9 @@ class DataExpectationsReporter(QualityEngine):
 
     @property
     def tests(self):
-        "List of individual tests available for the data quality checks."
-        return ['_overall_assessment', '_coverage_fraction', '_expectation_level_assessment']
+        raise NotImplementedError  # Override the base class property
 
-    def __between_value_error(self, expectation_summary):
+    def __between_value_error(self, expectation_summary: dict) -> tuple:
         """Computes deviation metrics of the observed value relative to the expectation range and the nearest bound.
         If the max and the min of the range coincide, deviation_relative_to_range is returned None.
         If the nearest bound is 0, deviation_relative_to_bound is not computed is returned None.
@@ -55,7 +54,7 @@ class DataExpectationsReporter(QualityEngine):
         return (range_deviations, bound_deviations)
 
     @staticmethod
-    def _summarize_results(results_json_path: str):
+    def _summarize_results(results_json_path: str) -> dict:
         """Tests and parses the results_json file, creates a metadata summary to support tests of the module.
 
         Args:
@@ -83,7 +82,7 @@ class DataExpectationsReporter(QualityEngine):
         results_summary['OVERALL'] = overall_results
         return results_summary
 
-    def _coverage_fraction(self, results_json_path: str, df: pd.DataFrame, minimum_coverage=0.75):
+    def _coverage_fraction(self, results_json_path: str, df: pd.DataFrame, minimum_coverage: float=0.75) -> float:
         """Compares the DataFrame column schema to the results json file to estimate validation coverage fraction.
         Ignores all table expectations (since these either are not comparing columns or are catchall expectations).
 
@@ -116,7 +115,8 @@ columns, which is below the expected coverage of {:.0%}.".format(
                 )
         return len(column_coverage)/len(df_column_set)
 
-    def _overall_assessment(self, results_json_path: str, error_tol: int = 0, rel_error_tol: Optional[float] = None):
+    def _overall_assessment(self, results_json_path: str, error_tol: int = 0,
+                            rel_error_tol: Optional[float] = None) -> list:
         """Controls for errors in the overall execution of the validation suite.
         Raises a warning if failed expectations are over the tolerance (0 by default).
 
@@ -140,7 +140,7 @@ failed expectations.".format(
             )
         return failed_expectation_idxs
 
-    def _expectation_level_assessment(self, results_json):
+    def _expectation_level_assessment(self, results_json: dict) -> pd.DataFrame:
         """Controls for errors in the expectation level of the validation suite.
         Calls expectation specific methods to analyze some of the expectation logs.
 
@@ -160,8 +160,8 @@ failed expectations.".format(
             expectation_level_report.iloc[idx_] = [expectation_type, result, error_metric]
         return expectation_level_report
 
-    def evaluate(self, results_json_path, df = None, error_tol = 0, rel_error_tol: Optional[float] = None,
-                minimum_coverage: Optional[float] = 0.75):
+    def evaluate(self, results_json_path: str, df: pd.DataFrame = None, error_tol: int = 0,
+                rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
 
         Args:
