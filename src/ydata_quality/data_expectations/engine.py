@@ -183,5 +183,5 @@ failed expectations.".format(
                 results_json_path, df, minimum_coverage=minimum_coverage)
         else:
             print("A valid DataFrame was not passed, skipping coverage fraction test.")
-        results['Expectation level assessment'] = self._expectation_level_assessment(results_json_path)
+        results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
         return results
