@@ -89,7 +89,7 @@ class DriftAnalyser(QualityEngine):
         self._model = model
         self.has_model = None
         self._random_state = random_state
-        self._holdout, self._remaining_sample = random_split(ref, holdout, random_state=self._random_state)
+        self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self._random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
 
@@ -183,7 +183,7 @@ class DriftAnalyser(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test.
         """
-        covariates = self._remaining_sample.copy()
+        covariates = self._remaining_data.copy()
         holdout = self._holdout.copy()
         if self.label:
             covariates.drop(self.label, axis=1, inplace=True)
@@ -220,7 +220,7 @@ class DriftAnalyser(QualityEngine):
         if self.label is None:
             print("[REFERENCE LABEL DRIFT] No label was provided. Test skipped.")
             return
-        labels = self._remaining_sample[self.label].copy()
+        labels = self._remaining_data[self.label].copy()
         holdout = self._holdout[self.label]
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
         p_values = pd.DataFrame(index=["{0:.0%}".format(fraction) for fraction in leftover_fractions],
