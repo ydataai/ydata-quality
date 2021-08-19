@@ -270,13 +270,13 @@ class DriftAnalyser(QualityEngine):
         n_drifted_feats = sum(test_summary['Verdict']=='Drift')
         n_invalid_tests = sum(test_summary['Verdict']=='Invalid test')
         if n_drifted_feats>0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=2, data=test_summary,
                     description=f"""{n_drifted_feats} features accused drift in the sample test. The covariates of the test sample do not appear to be representative of the reference sample."""
             ))
         elif n_invalid_tests>0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=3, data=test_summary,
                     description=f"""There were {n_invalid_tests} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
@@ -302,13 +302,13 @@ class DriftAnalyser(QualityEngine):
             index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
         test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val>= 0 else 'Invalid test')
         if test_summary['Verdict']=='Drift':
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=2, data=test_summary,
                     description=f"""The label accused drift in the sample test with a p-test of {p_val}, which is under the threshold {p_thresh}. The label of the test sample does not appear to be representative of the reference sample."""
             ))
         elif test_summary['Verdict']=='Invalid test':
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=3, data=test_summary,
                     description=f"""The test was invalid. This is likely due to a small test sample size."""
@@ -339,13 +339,13 @@ class DriftAnalyser(QualityEngine):
             index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
         test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val>= 0 else 'Invalid test')
         if test_summary['Verdict']=='Drift':
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Concept drift', category='Sampling', priority=2, data=test_summary,
                     description=f"""There was concept drift detected with a p-test of {p_val}, which is under the threshold {p_thresh}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample."""
             ))
         elif test_summary['Verdict']=='Invalid test':
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Concept drift', category='Sampling', priority=3, data=test_summary,
                     description=f"""The test was invalid. This is likely due to a small test sample size."""

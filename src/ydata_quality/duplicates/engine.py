@@ -51,7 +51,7 @@ class DuplicateChecker(QualityEngine):
         "Returns a DataFrame filtered for exact duplicate records."
         dups = self.__get_duplicates(self.df) # Filter for duplicate instances
         if len(dups) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Exact Duplicates', category='Duplicates', priority=2, data=dups,
                     description=f"Found {len(dups)} instances with exact duplicate feature values."
@@ -74,7 +74,7 @@ class DuplicateChecker(QualityEngine):
         if entity is not None: # entity is specified
             dups = self.__get_entity_duplicates(self.df, entity)
             if len(dups) > 0:                        # if we have any duplicates
-                self._warnings.add(
+                self.store_warning(
                     QualityWarning(
                         test='Entity Duplicates', category='Duplicates', priority=2, data=dups,
                         description=f"Found {len(dups)} duplicates after grouping by entities."
@@ -109,7 +109,7 @@ class DuplicateChecker(QualityEngine):
                     dups[col] = tgt_col  # Store if they match
 
         if len(dups) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Duplicate Columns', category='Duplicates', priority=1, data=dups,
                     description=f"Found {len(dups)} columns with exactly the same feature values as other columns."

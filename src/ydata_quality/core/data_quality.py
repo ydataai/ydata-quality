@@ -2,6 +2,7 @@
 Implementation of main class for Data Quality checks.
 """
 from typing import List, Union, Optional, Callable
+from collections import Counter
 
 import pandas as pd
 
@@ -41,7 +42,7 @@ class DataQuality:
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
         """
         self.df = df
-        self._warnings = set()
+        self._warnings = list()
         self._engines = { # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities),
             'missings': MissingsProfiler(df=df, target=label),
@@ -66,8 +67,7 @@ class DataQuality:
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None) -> List[QualityWarning]:
         "Retrieves warnings filtered by their properties."
-        filtered = list(self.warnings) # convert original set
-        filtered = [w for w in filtered if w.category == category] if category else filtered
+        filtered = [w for w in self.warnings if w.category == category] if category else self.warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
         filtered.sort() # sort by priority
@@ -81,7 +81,7 @@ class DataQuality:
     def __store_warnings(self):
         "Appends all warnings from individiual engines into warnings of DataQuality main class."
         for engine in self.engines.values():
-            self._warnings = self._warnings.union(set(engine.get_warnings()))
+            self._warnings += engine.get_warnings()
 
     def evaluate(self):
         "Runs all the individual data quality checks and aggregates the results."
@@ -91,8 +91,15 @@ class DataQuality:
 
     def report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        # TODO: Provide a count of warnings by priority
         self.__store_warnings() # fetch all warnings from the engines
-        for warn in self.get_warnings():
-            print(warn)
+        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+        if not self._warnings:
+            print('No warnings found.')
+        else:
+            prio_counts = Counter([warn.priority.value for warn in self._warnings])
+            print('Warnings count by priority:')
+            print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(f'\tTOTAL: {len(self._warnings)} warning(s)')
+            print('List of warnings sorted by priority:')
+            print(*(f"\t{warn}" for warn in self.warnings), sep='\n')
 
