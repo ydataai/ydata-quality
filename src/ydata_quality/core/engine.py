@@ -28,7 +28,6 @@ class QualityEngine(ABC):
         "Storage of all detected data quality warnings."
         return self._warnings
 
-
     @property
     def label(self):
         "Property that returns the label under inspection."
@@ -89,10 +88,12 @@ class QualityEngine(ABC):
 
     def report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
+        # TODO: Decide on final type for warnings, list vs. set
         # TODO: Provide a count of warnings by priority
-        self._warnings = set(sorted(self._warnings)) # Sort the warnings by priority
+        self._warnings = list({warning.__hash__(): warning for warning in sorted(self._warnings)}.values()) # Sort unique warnings by priority
         for warn in self.warnings:
             print(warn)
+        self._warnings = set(self.warnings)
 
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
