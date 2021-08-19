@@ -110,7 +110,7 @@ class DataExpectationsReporter(QualityEngine):
             self.store_warning(
                     QualityWarning(
                         test='Coverage Fraction', category='Data Expectations', priority=2,
-                        data=df_column_set.difference(column_coverage),
+                        data={'Columns not covered':df_column_set.difference(column_coverage)},
                         description="The provided DataFrame has a total expectation coverage of {:.0%} of its \
 columns, which is below the expected coverage of {:.0%}.".format(
                             coverage_fraction, minimum_coverage)
@@ -135,7 +135,8 @@ columns, which is below the expected coverage of {:.0%}.".format(
         if overall_results['expectation_count'] - overall_results['total_successes'] > error_tol:
             self.store_warning(
                 QualityWarning(
-                    test='Overall Assessment', category='Data Expectations', priority=2, data=failed_expectation_idxs,
+                    test='Overall Assessment', category='Data Expectations', priority=2,
+                    data={'Failed expectation indexes': failed_expectation_idxs},
                     description="{} expectations have failed, which is more than the implied absolute threshold of {} \
 failed expectations.".format(
                         len(failed_expectation_idxs), int(error_tol))
@@ -151,7 +152,7 @@ failed expectations.".format(
             results_json (str): A path to the json output from a Great Expectations validation run."""
         results_summary = self._summarize_results(results_json)
         expectation_level_report = pd.DataFrame(index = results_summary['EXPECTATIONS'].keys(), columns =
-        ['Expectation type', 'Result', 'Error metric(s)'])
+        ['Expectation type', 'Successful?', 'Error metric(s)'], dtype=object)
         for idx_, expectation_summary in results_summary['EXPECTATIONS'].items():
             error_metric = None
             result = expectation_summary["success"]
@@ -179,8 +180,12 @@ failed expectations.".format(
         results = {}
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         if df is not None:
-            results['Coverage Fraction'] = self._coverage_fraction(
-                results_json_path, df, minimum_coverage=minimum_coverage)
+            try: # if anything fails
+                results['Coverage Fraction'] = self._coverage_fraction(
+                    results_json_path, df, minimum_coverage=minimum_coverage)
+            except Exception as exc: # print a Warning and log the message
+                print('WARNING: Skipping Coverage Fraction due to a found dataset-expectation suite mismatch.')
+                results['Coverage Fraction'] = "[ERROR] Failed to compute. Original exception: "+f"{exc}"
         else:
             print("A valid DataFrame was not passed, skipping coverage fraction test.")
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
