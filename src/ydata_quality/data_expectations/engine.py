@@ -128,21 +128,20 @@ columns, which is below the expected coverage of {:.0%}.".format(
             error_tol (int): Defines how many failed expectations are tolerated.
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol."""
         results_summary = self._summarize_results(results_json_path)
-        overall_results = results_summary['OVERALL']
-        failed_expectation_idxs = [i for i, exp in enumerate(results_summary['EXPECTATIONS'].values()) if not exp['success']]
+        failed_expectation_ids = [i for i,exp in enumerate(results_summary['EXPECTATIONS'].values()) if not exp['success']]
         if rel_error_tol:
-            error_tol = overall_results['expectation_count']*rel_error_tol
-        if overall_results['expectation_count'] - overall_results['total_successes'] > error_tol:
+            error_tol = results_summary['OVERALL']['expectation_count']*rel_error_tol
+        if results_summary['OVERALL']['expectation_count'] - results_summary['OVERALL']['total_successes'] > error_tol:
             self.store_warning(
                 QualityWarning(
                     test='Overall Assessment', category='Data Expectations', priority=2,
-                    data={'Failed expectation indexes': failed_expectation_idxs},
+                    data={'Failed expectation indexes': failed_expectation_ids},
                     description="{} expectations have failed, which is more than the implied absolute threshold of {} \
 failed expectations.".format(
-                        len(failed_expectation_idxs), int(error_tol))
+                        len(failed_expectation_ids), int(error_tol))
                 )
             )
-        return failed_expectation_idxs
+        return failed_expectation_ids
 
     def _expectation_level_assessment(self, results_json: dict) -> pd.DataFrame:
         """Controls for errors in the expectation level of the validation suite.
@@ -150,10 +149,10 @@ failed expectations.".format(
 
         Args:
             results_json (str): A path to the json output from a Great Expectations validation run."""
-        results_summary = self._summarize_results(results_json)
-        expectation_level_report = pd.DataFrame(index = results_summary['EXPECTATIONS'].keys(), columns =
+        expectations_summary = self._summarize_results(results_json)['EXPECTATIONS']
+        expectation_level_report = pd.DataFrame(index = expectations_summary.keys(), columns =
         ['Expectation type', 'Successful?', 'Error metric(s)'], dtype=object)
-        for idx_, expectation_summary in results_summary['EXPECTATIONS'].items():
+        for idx_, expectation_summary in expectations_summary.items():
             error_metric = None
             result = expectation_summary["success"]
             expectation_type = expectation_summary["type"]
@@ -162,7 +161,7 @@ failed expectations.".format(
                 if "between" in expectation_type and "quantile" not in expectation_type:
                     error_metric = self.__between_value_error(expectation_summary)
             expectation_level_report.iloc[idx_] = [expectation_type, result, error_metric]
-        return expectation_level_report
+        return (expectation_level_report, {idx: expectations_summary[idx] for idx in expectation_level_report.index})
 
     def evaluate(self, results_json_path: str, df: pd.DataFrame = None, error_tol: int = 0,
                 rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75) -> dict:

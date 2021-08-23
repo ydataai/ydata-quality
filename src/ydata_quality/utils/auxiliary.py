@@ -9,7 +9,7 @@ import json
 import pandas as pd
 
 def test_load_json_path(json_path: str) -> dict:
-    """Tests file existance from given path and attempts to parse as a json dictionary.
+    """Tests file existence from given path and attempts to parse as a json dictionary.
 
     Args:
         json_path (str): A path to a json dictionary.
@@ -41,4 +41,3 @@ def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=
     split = sample.iloc[:split_len]
     remainder = sample.iloc[split_len:]
     return split, remainder
-    
