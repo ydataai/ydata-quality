@@ -1,17 +1,18 @@
 """
 Implementation of main class for Data Quality checks.
 """
-from typing import List, Union, Optional, Callable
 from collections import Counter
+from typing import Callable, List, Optional, Union
 
 import pandas as pd
 
-from ydata_quality.core.warnings import QualityWarning, Priority
+from ydata_quality.core.warnings import Priority, QualityWarning
+from ydata_quality.drift import DriftAnalyser
 from ydata_quality.duplicates import DuplicateChecker
 from ydata_quality.labelling import LabelInspector
 from ydata_quality.missings import MissingsProfiler
 from ydata_quality.valued_missing_values import VMVIdentifier
-from ydata_quality.drift import DriftAnalyser
+
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -56,15 +57,20 @@ class DataQuality:
         else:
             print('Label is not defined. Skipping LABELLING engine.')
 
+    def __clean_warnings(self):
+        """Deduplicates and sorts the list of warnings."""
+        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+
     def get_warnings(self,
                     category: Optional[str] = None,
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None) -> List[QualityWarning]:
         "Retrieves warnings filtered by their properties."
+        self.__store_warnings()
+        self.__clean_warnings()
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        filtered.sort() # sort by priority
         return filtered
 
     @property
@@ -80,13 +86,12 @@ class DataQuality:
     def evaluate(self):
         "Runs all the individual data quality checks and aggregates the results."
         results = {name: engine.evaluate() for name, engine in self.engines.items()}
-        self.__store_warnings()
         return results
 
     def report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
         self.__store_warnings() # fetch all warnings from the engines
-        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+        self.__clean_warnings()
         if not self._warnings:
             print('No warnings found.')
         else:
@@ -96,4 +101,3 @@ class DataQuality:
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
             print('List of warnings sorted by priority:')
             print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
-

@@ -2,12 +2,14 @@
 Implementation of abstract class for Data Quality engines.
 """
 from abc import ABC
-from typing import Optional
 from collections import Counter
+from typing import Optional
 
 import pandas as pd
-from ydata_quality.core.warnings import QualityWarning, Priority
+
+from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.modelling import infer_dtypes
+
 
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
@@ -60,6 +62,10 @@ broad dtype list: {}.".format(supported_dtypes)
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
+    def __clean_warnings(self):
+        """Deduplicates and sorts the list of warnings."""
+        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+
     def store_warning(self, warning: QualityWarning):
         "Adds a new warning to the internal 'warnings' storage."
         self._warnings.append(warning)
@@ -69,10 +75,11 @@ broad dtype list: {}.".format(supported_dtypes)
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
+        self.__clean_warnings()
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        return sorted(filtered)  # sort by priority
+        return filtered  # sort by priority
 
     @property
     def tests(self):
@@ -81,7 +88,7 @@ broad dtype list: {}.".format(supported_dtypes)
 
     def report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+        self.__clean_warnings()
         if not self._warnings:
             print('No warnings found.')
         else:
@@ -94,7 +101,7 @@ broad dtype list: {}.".format(supported_dtypes)
 
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
-        self._warnings = list() # reset the warnings to avoid duplicates
+        self._warnings = list() # reset the warnings
         results = {}
         for test in self.tests:
             try: # if anything fails
