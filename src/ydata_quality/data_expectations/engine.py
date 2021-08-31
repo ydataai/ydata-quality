@@ -33,6 +33,7 @@ class DataExpectationsReporter(QualityEngine):
         range_deviations = None
         bound_deviations = None
         observed = expectation_summary['result']['observed_value']
+        column_name = expectation_summary['kwargs']['column']
         bounds = [expectation_summary['kwargs'][bound] for bound in ['min_value', 'max_value']]
         abs_dist_bounds = [abs(observed-bound) for bound in bounds]
         nearest_bound = bounds[np.argmin(abs_dist_bounds)]
@@ -49,7 +50,7 @@ class DataExpectationsReporter(QualityEngine):
             QualityWarning(
                 test='Expectation assessment - Value Between', category='Data Expectations',priority=3,
                 data=(range_deviations, bound_deviations),
-                description="The observed value is outside of the expected range."
+                description="Column {} - The observed value is outside of the expected range.".format(column_name)
                 +(range_deviation_string if range_deviations else "")
                 +(bound_deviation_string if bound_deviations else "")
             )
