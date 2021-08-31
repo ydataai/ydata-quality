@@ -67,7 +67,7 @@ class DataQuality:
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None) -> List[QualityWarning]:
         "Retrieves warnings filtered by their properties."
-        filtered = [w for w in self.warnings if w.category == category] if category else self.warnings
+        filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
         filtered.sort() # sort by priority
@@ -101,5 +101,5 @@ class DataQuality:
             print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
             print('List of warnings sorted by priority:')
-            print(*(f"\t{warn}" for warn in self.warnings), sep='\n')
+            print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
 
