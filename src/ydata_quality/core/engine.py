@@ -25,11 +25,6 @@ class QualityEngine(ABC):
         return self._df
 
     @property
-    def warnings(self):
-        "Storage of all detected data quality warnings."
-        return self._warnings
-
-    @property
     def label(self):
         "Property that returns the label under inspection."
         return self._label
@@ -74,11 +69,10 @@ broad dtype list: {}.".format(supported_dtypes)
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
-        filtered = [w for w in self.warnings if w.category == category] if category else self.warnings
+        filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        filtered.sort() # sort by priority
-        return filtered
+        return sorted(filtered)  # sort by priority
 
     @property
     def tests(self):
@@ -96,7 +90,7 @@ broad dtype list: {}.".format(supported_dtypes)
             print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
             print('List of warnings sorted by priority:')
-            print(*(f"\t{warn}" for warn in self.warnings), sep='\n')
+            print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
 
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
