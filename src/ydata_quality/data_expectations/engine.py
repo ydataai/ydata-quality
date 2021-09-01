@@ -175,7 +175,7 @@ failed expectations.".format(
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol.
             minimum_coverage (float): Minimum expected fraction of DataFrame columns covered by the expectation suite.
         """
-        self._warnings = set() # reset the warnings to avoid duplicates
+        self._warnings = list() # reset the warnings to avoid duplicates
         df = df if isinstance(df, pd.DataFrame) else None
         results = {}
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)

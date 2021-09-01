@@ -2,18 +2,21 @@
 Implementation of abstract class for Data Quality engines.
 """
 from abc import ABC
+from collections import Counter
 from typing import Optional
 
 import pandas as pd
-from ydata_quality.core.warnings import QualityWarning, Priority
+
+from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.modelling import infer_dtypes
+
 
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
     def __init__(self, df: pd.DataFrame, label: str = None, dtypes: dict = None):
         self._df = df
-        self._warnings = set()
+        self._warnings = list()
         self._tests = []
         self._label = label
         self._dtypes = dtypes
@@ -22,12 +25,6 @@ class QualityEngine(ABC):
     def df(self):
         "Target of data quality checks."
         return self._df
-
-    @property
-    def warnings(self):
-        "Storage of all detected data quality warnings."
-        return self._warnings
-
 
     @property
     def label(self):
@@ -52,11 +49,10 @@ class QualityEngine(ABC):
     def dtypes(self, dtypes: dict):
         if not isinstance(dtypes, dict):
             raise ValueError("Property 'dtypes' should be a dictionary.")
-        assert all(col in self.df.columns for col in dtypes), "All dtypes keys \
-            must be columns in the dataset."
+        assert all(col in self.df.columns for col in dtypes), "All dtypes keys must be columns in the dataset."
         supported_dtypes = ['numerical', 'categorical']
-        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes\
-             must be in the supported broad dtype list: {}.".format(supported_dtypes)
+        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes must be in the supported \
+broad dtype list: {}.".format(supported_dtypes)
         df_col_set = set(self.df.columns)
         dtypes_col_set = set(dtypes.keys())
         missing_cols = df_col_set.difference(dtypes_col_set)
@@ -66,21 +62,24 @@ class QualityEngine(ABC):
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
+    def __clean_warnings(self):
+        """Deduplicates and sorts the list of warnings."""
+        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+
     def store_warning(self, warning: QualityWarning):
         "Adds a new warning to the internal 'warnings' storage."
-        self._warnings.add(warning)
+        self._warnings.append(warning)
 
     def get_warnings(self,
                     category: Optional[str] = None,
                     test: Optional[str] = None,
                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
-        filtered = list(self.warnings) # convert original set
-        filtered = [w for w in filtered if w.category == category] if category else filtered
+        self.__clean_warnings()
+        filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
-        filtered.sort() # sort by priority
-        return filtered
+        return filtered  # sort by priority
 
     @property
     def tests(self):
@@ -89,14 +88,20 @@ class QualityEngine(ABC):
 
     def report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        # TODO: Provide a count of warnings by priority
-        self._warnings = set(sorted(self._warnings)) # Sort the warnings by priority
-        for warn in self.warnings:
-            print(warn)
+        self.__clean_warnings()
+        if not self._warnings:
+            print('No warnings found.')
+        else:
+            prio_counts = Counter([warn.priority.value for warn in self._warnings])
+            print('Warnings count by priority:')
+            print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(f'\tTOTAL: {len(self._warnings)} warning(s)')
+            print('List of warnings sorted by priority:')
+            print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
 
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
-        self._warnings = set() # reset the warnings to avoid duplicates
+        self._warnings = list() # reset the warnings
         results = {}
         for test in self.tests:
             try: # if anything fails

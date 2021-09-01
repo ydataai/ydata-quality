@@ -60,7 +60,7 @@ class SharedLabelInspector(QualityEngine):
         """Returns observations with missing labels"""
         missing_labels = self.__get_missing_labels(self.df, self.label)
         if len(missing_labels) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Missing labels', category='Labels', priority=1, data=missing_labels,
                     description=f"Found {len(missing_labels)} instances with missing labels."
@@ -110,7 +110,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
             count_th = int(count_th*self.df.shape[0])
         few_labels = self.__get_few_labels(count_th)
         if len(few_labels) > 0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Few labels', category='Labels', priority=2, data=few_labels,
                     description=
@@ -144,15 +144,15 @@ class CategoricalLabelInspector(SharedLabelInspector):
                 if excess > 0:
                     folder = 'Over-represented'
                 data.setdefault(folder, {})[_class] = self.df[self.df[self.label] == _class]
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Unbalanced Classes', category='Labels', priority=2,
                     data=data,
-                    description="""Classes {} are under-represented each having less than {:.1%} of total instances.\
-                        \nClasses {} are over-represented each having more than {:.1%} of total instances""".format(
-                        set(data['Under-represented'].keys()), fair_share-adj_slack,
-                        set(data['Over-represented'].keys()), fair_share+adj_slack)
-            ))
+                    description="""Classes {} are under-represented each having less than {:.1%} of total instances. \
+Classes {} are over-represented each having more than {:.1%} of total instances""".format(
+    set(data['Under-represented'].keys()), fair_share-adj_slack,
+    set(data['Over-represented'].keys()), fair_share+adj_slack)
+    ))
         else:
             print("[UNBALANCED CLASSES] No unbalanced classes were found.")
             return None
@@ -178,15 +178,14 @@ class CategoricalLabelInspector(SharedLabelInspector):
         threshold = (1-slack)*record_weighted_avg
         poor_performers = {_class:perf for _class, perf in results.items() if perf < threshold}
         if len(poor_performers)>0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='One vs Rest Performance', category='Labels', priority=2,
                     data=pd.Series(poor_performers),
-                    description="Classes {} performed under the {:.1%} AUROC threshold.\
-                    \n\tThe threshold was defined as an average of all classifiers with {:.0%} slack.".format(
-                            set(poor_performers.keys()), threshold, slack
-                        )
-            ))
+                    description="Classes {} performed under the {:.1%} AUROC threshold. \
+The threshold was defined as an average of all classifiers with {:.0%} slack.".format(
+    set(poor_performers.keys()), threshold, slack)
+    ))
         return pd.Series(results)
 
     def _get_centroids(self):
@@ -228,12 +227,12 @@ class CategoricalLabelInspector(SharedLabelInspector):
                 potential_outliers += new_outliers
                 data.setdefault(_class, self.df.loc[sd_distances.index])
         if potential_outliers>0:
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Outlier Detection', category='Labels', priority=2, data=data,
-                    description="Found {} potential outliers across {} classes.\
-                        \n\tA distance bigger than {} standard deviations of intra-cluster distances to the respective centroids was used to define the potential outliers.".format(
-                                potential_outliers, len(data.keys()), th)
+                    description="Found {} potential outliers across {} classes. A distance bigger than {} standard \
+deviations of intra-cluster distances to the respective centroids was used to define the potential outliers.".format(
+    potential_outliers, len(data.keys()), th)
             ))
         return data
 
@@ -287,12 +286,12 @@ class NumericalLabelInspector(SharedLabelInspector):
         if len(potential_outliers)>0:
             total_outliers = sum([cluster_outliers.shape[0] for cluster_outliers in potential_outliers.values()])
             coverage_string = "{} clusters".format(len(clusters)) if use_clusters else "the full dataset"
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Outlier Detection', category='Labels', priority=2, data=potential_outliers,
-                    description="Found {} potential outliers across {}.\
-                        \n\tA distance bigger than {} standard deviations of intra-cluster distances to the respective centroids was used to define the potential outliers.".format(
-                                total_outliers, coverage_string, th)
+                    description="Found {} potential outliers across {}. \
+A distance bigger than {} standard deviations of intra-cluster distances to the respective centroids was used to \
+define the potential outliers.".format(total_outliers, coverage_string, th)
             ))
         return potential_outliers
 
@@ -308,19 +307,19 @@ class NumericalLabelInspector(SharedLabelInspector):
                 print("[TEST NORMALITY] The label values appears to be normally distributed.")
             else:
                 print("[TEST NORMALITY] The {} transform appears to be able to normalize the label values.".format(transform))
-                self._warnings.add(
+                self.store_warning(
                     QualityWarning(
                         test='Test normality', category='Labels', priority=2, data=vals,
-                        description="The label distribution as-is failed a normality test.\
-                            \n\tUsing the {} transform provided a positive normality test with a p-value statistic of {:.2f}".format(
-                                    transform, pstat)
+                        description="The label distribution as-is failed a normality test. \
+Using the {} transform provided a positive normality test with a p-value statistic of {:.2f}".format(
+    transform, pstat)
                 ))
         else:
             print("[TEST NORMALITY] It was not possible to normalize the label values. See the warning message for additional context.")
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Test normality', category='Labels', priority=1, data=vals,
-                    description="The label distribution failed to pass a normality test as-is and following a battery of transforms.\
-                        \n\tIt is possible that the data originates from an exotic distribution, there is heavy outlier presence or it is multimodal.\
-                        \n\tAddressing this issue might prove critical for regressor performance."
+                    description="The label distribution failed to pass a normality test as-is and following a battery of transforms. \
+It is possible that the data originates from an exotic distribution, there is heavy outlier presence or it is \
+multimodal. Addressing this issue might prove critical for regressor performance."
             ))

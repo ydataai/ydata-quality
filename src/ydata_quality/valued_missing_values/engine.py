@@ -87,7 +87,7 @@ class VMVIdentifier(QualityEngine):
                 flatlines[column] = flts
         if len(flatlines)>0:  # Flatlines detected
             total_flatlines = sum([flts.shape[0] for flts in flatlines.values()])
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Flatlines', category='Valued Missing Values', priority=2, data=flatlines,
                     description=f"Found {total_flatlines} flatline events with a minimun length of {th} among the columns {set(flatlines.keys())}."
@@ -125,7 +125,7 @@ class VMVIdentifier(QualityEngine):
             ))
         else:
             total_vmvs = vmvs.sum().sum()
-            self._warnings.add(
+            self.store_warning(
                 QualityWarning(
                     test='Predefined Valued Missing Values', category='Valued Missing Values', priority=2, data=vmvs,
                     description=f"Found {total_vmvs} vmvs in the dataset."
