@@ -38,7 +38,11 @@ class BiasFairness(QualityEngine):
         return self._sensitive_features
 
     def proxy_identification(self, th=0.8):
-        """Tests for non-sensitive features high correlation with sensitive attributes that may
+        """Tests for non-protected features high correlation with sensitive attributes.
+
+        Non-sensitive features can serve as proxy for protected attributes, exposing the data to a possible
+        subsequent bias in the data pipeline. High association values indicate that alternative features can
+        be used in place of the original sensitive attributes.
         """
         # TODO: multiple thresholds per association type (num/num, num/cat, cat/cat)
 
@@ -65,7 +69,7 @@ class BiasFairness(QualityEngine):
 
         performances = pd.Series(index=self.sensitive_features)
         for feat in performances.index:
-            data = self.df.copy().drop(columns=[x for x in drop_features if x != feat]) # drop all except target
+            data = self.df.drop(columns=[x for x in drop_features if x != feat]) # drop all except target
             performances[feat] = baseline_performance(df=data, target=feat)
         return performances
 
