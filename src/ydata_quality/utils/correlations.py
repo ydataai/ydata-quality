@@ -31,5 +31,5 @@ def filter_associations(corrs: pd.DataFrame, th: float,
     corrs['features'] = ['_'.join(sorted((i.index, i.variable))) for i in corrs.itertuples()] # create the sorted pairs of feature names
     corrs.drop_duplicates('features', inplace=True) # deduplicate combination pairs
     corrs.sort_values(by='value', ascending=False, inplace=True) # sort by correlation
-    corrs = corrs.set_index('features').rename(columns={'value': name})[[name]].squeeze() # rename and subset columns
+    corrs = corrs.set_index('features').rename(columns={'value': name})[name] # rename and subset columns
     return corrs
