@@ -16,9 +16,9 @@ class BiasFairness(QualityEngine):
     """ Engine to run bias and fairness analysis.
 
     Tests:
-        - Proxy Identification
-        - Sensitive Predictability
-        - Performance Discrimination
+        - Proxy Identification: tests for high correlation between sensitive and non-sensitive features
+        - Sensitive Predictability: trains a baseline model to predict sensitive attributes
+        - Performance Discrimination: checks for performance disparities on sensitive attributes
     """
 
     def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None):
@@ -30,14 +30,14 @@ class BiasFairness(QualityEngine):
         """
         super().__init__(df=df, label=label)
         self._sensitive_features = sensitive_features
-        self._tests = ["performance_discrimination", "proxy_identification"]
+        self._tests = ["performance_discrimination", "proxy_identification", "sensitive_predictability"]
 
     @property
     def sensitive_features(self):
         "Returns a list of sensitive features."
         return self._sensitive_features
 
-    def proxy_identification(self, th=0.8):
+    def proxy_identification(self, th=0.5):
         """Tests for non-protected features high correlation with sensitive attributes.
 
         Non-sensitive features can serve as proxy for protected attributes, exposing the data to a possible
@@ -60,7 +60,7 @@ class BiasFairness(QualityEngine):
         return corrs
 
 
-    def sensitive_predictability(self, th=0.8):
+    def sensitive_predictability(self, th=0.5):
         """Trains a baseline classifier to predict sensitive attributes based on remaining features.
 
         Good performances indicate that alternative features may be working as proxies for sensitive attributes.
@@ -71,6 +71,16 @@ class BiasFairness(QualityEngine):
         for feat in performances.index:
             data = self.df.drop(columns=[x for x in drop_features if x != feat]) # drop all except target
             performances[feat] = baseline_performance(df=data, target=feat)
+
+        high_perfs = performances[performances>th]
+        if len(high_perfs) > 0:
+            self.store_warning(
+                QualityWarning(
+                    test='Sensitive Attribute Predictability', category='Bias&Fairness', priority=3, data=high_perfs,
+                    description=f"Found {len(high_perfs)} sensitive attribute(s) with high predictability performance"\
+                    f" (greater than {th})."
+                )
+            )
         return performances
 
     def performance_discrimination(self):
@@ -79,6 +89,7 @@ class BiasFairness(QualityEngine):
         Get the performance of a baseline model for each feature value of a sensitive attribute.
         High disparities in the performance metrics indicate that the model may not be fair across sensitive attributes.
         """
+        # TODO: support error rate parity metrics (e.g. false positive rate, positive rate)
         if self.label is None:
             print('Argument "label" must be defined to calculate performance discrimination metric. Skipping test.')
             pass
