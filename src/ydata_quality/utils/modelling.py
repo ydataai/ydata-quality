@@ -6,7 +6,7 @@ from typing import Union
 
 import numpy as np
 import pandas as pd
-from scipy.stats import boxcox, normaltest
+from scipy.stats import boxcox, normaltest, mode
 from sklearn.compose import ColumnTransformer
 from sklearn.exceptions import ConvergenceWarning, DataConversionWarning
 from sklearn.impute import SimpleImputer
@@ -19,6 +19,8 @@ from sklearn.preprocessing import (FunctionTransformer, OneHotEncoder,
                                    RobustScaler, StandardScaler,
                                    label_binarize)
 from sklearn.utils._testing import ignore_warnings
+
+from ydata_quality.utils.enum import PredictionTask
 
 BASELINE_CLASSIFIER = Pipeline([
     ('imputer', SimpleImputer()),
@@ -73,8 +75,17 @@ def baseline_predictions(df: pd.DataFrame, target: str, task='classification'):
     return y_pred, X_test, y_test
 
 @ignore_warnings(category=DataConversionWarning)
-def baseline_performance(df: pd.DataFrame, target: str, task='classification'):
-    "Train a baseline model, predict for a test set and return the performance."
+def baseline_performance(df: pd.DataFrame, target: str,
+                        task: PredictionTask = PredictionTask.CLASSIFICATION,
+                        adjusted_metric: bool = False):
+    """Train a baseline model, predict for a test set and return the performance.
+
+    Args:
+        - df (pd.DataFrame): original dataset
+        - target (str): name of target feature column
+        - task (PredictionTask): classification, regression
+        - adjusted_metric (bool): if True, return metric as percentage of max achievable performance
+    """
 
     # 0. Infer the prediction task
     task = get_prediction_task(df=df, label=target)
@@ -86,7 +97,28 @@ def baseline_performance(df: pd.DataFrame, target: str, task='classification'):
     y_pred, _, y_test = baseline_predictions(df=df, target=target, task=task)
 
     # 3. Get the performance
-    return metric(y_test, y_pred)
+    if adjusted_metric:
+        perf = adjusted_performance(y_test, y_pred, task=task, metric=metric)
+    else:
+        perf = metric(y_test, y_pred)
+    return perf
+
+def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable):
+    """Calculates the adjusted metric as ratio of real to maximum performance.
+
+    Returns the percentage to the best achievable performance starting from a baseline.
+    """
+    task = PredictionTask(task)
+    y_default = np.mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0] # define the value
+    y_base = np.tile(y_default, (len(y_true), 1)) # create an array with default value
+
+    best_perf = metric(y_true, y_true)
+    base_perf = metric(y_true, y_base)
+    real_perf = metric(y_true, y_pred)
+
+    return (real_perf - base_perf) / (best_perf - base_perf)
+
+
 
 @ignore_warnings(category=DataConversionWarning)
 def performance_per_feature_values(df: pd.DataFrame, feature: str, target: str, task='classification'):

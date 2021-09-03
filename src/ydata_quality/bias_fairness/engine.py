@@ -60,7 +60,7 @@ class BiasFairness(QualityEngine):
         return corrs
 
 
-    def sensitive_predictability(self, th=0.5):
+    def sensitive_predictability(self, th=0.5, adjusted_metric=True):
         """Trains a baseline classifier to predict sensitive attributes based on remaining features.
 
         Good performances indicate that alternative features may be working as proxies for sensitive attributes.
@@ -70,7 +70,7 @@ class BiasFairness(QualityEngine):
         performances = pd.Series(index=self.sensitive_features)
         for feat in performances.index:
             data = self.df.drop(columns=[x for x in drop_features if x != feat]) # drop all except target
-            performances[feat] = baseline_performance(df=data, target=feat)
+            performances[feat] = baseline_performance(df=data, target=feat, adjusted_metric=adjusted_metric)
 
         high_perfs = performances[performances>th]
         if len(high_perfs) > 0:

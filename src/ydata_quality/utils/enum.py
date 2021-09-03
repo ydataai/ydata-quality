@@ -4,6 +4,11 @@ Custom implementations of Enums.
 
 from enum import Enum
 
+class PredictionTask(Enum):
+    "Enum of supported prediction tasks."
+    CLASSIFICATION = 'classification'
+    REGRESSION = 'regression'
+
 class OrderedEnum(Enum):
     "Enum with support for ordering."
     def __ge__(self, other):
