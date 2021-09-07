@@ -30,7 +30,8 @@ class BiasFairness(QualityEngine):
         """
         super().__init__(df=df, label=label)
         self._sensitive_features = sensitive_features
-        self._tests = ["performance_discrimination", "proxy_identification", "sensitive_predictability"]
+        self._tests = ["performance_discrimination", "proxy_identification",
+                        "sensitive_predictability", "sensitive_representativity"]
 
     @property
     def sensitive_features(self):
@@ -97,4 +98,27 @@ class BiasFairness(QualityEngine):
         res = {}
         for feat in self.sensitive_features:
             res[feat] = pd.Series(performance_per_feature_values(df=self.df, feature=feat, target=self.label))
+        return res
+
+
+    def sensitive_representativity(self, min_pct: float = 0.01):
+        """Checks categorical sensitive attributes minimum representativity of feature values.
+
+        Raises a warning if a feature value of a categorical sensitive attribute is not represented above a min_pct percentage.
+        """
+        # TODO: Representativity for numerical features
+        res = {}
+        categorical_sensitives = [k for (k,v) in self.dtypes.items() if (v == 'categorical') & (k in self.sensitive_features)]
+        for cat in categorical_sensitives:
+            dist = self.df[cat].value_counts(normalize=True) # normalized presence of feature values
+            res[cat] = dist # store the distribution
+            low_dist = dist[dist<min_pct] # filter for low representativity
+            if len(low_dist) > 0:
+                self.store_warning(
+                QualityWarning(
+                    test='Sensitive Attribute Representativity', category='Bias&Fairness', priority=2, data=low_dist,
+                    description=f"Found {len(low_dist)} values of '{cat}' sensitive attribute with low representativity"\
+                    f" in the dataset (below {min_pct*100:.2f}%)."
+                )
+            )
         return res
