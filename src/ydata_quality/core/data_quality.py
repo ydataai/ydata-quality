@@ -12,7 +12,8 @@ from ydata_quality.duplicates import DuplicateChecker
 from ydata_quality.labelling import LabelInspector
 from ydata_quality.missings import MissingsProfiler
 from ydata_quality.valued_missing_values import VMVIdentifier
-
+from ydata_quality.data_expectations import DataExpectationsReporter
+from ydata_quality.bias_fairness import BiasFairness
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -24,7 +25,12 @@ class DataQuality:
                     entities: List[Union[str, List[str]]] = [],
                     vmv_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
-                    model: Callable = None
+                    model: Callable = None,
+                    results_json_path: str = None,
+                    error_tol: int = 0,
+                    rel_error_tol: Optional[float] = None,
+                    minimum_coverage: Optional[float] = 0.75,
+                    sensitive_features: List[str] = []
                     ):
         """
         Engines:
@@ -33,6 +39,8 @@ class DataQuality:
         - Labelling
         - Valued Missing Values
         - Drift Analysis
+        - Data Expectations
+        - Bias & Fairness
 
         Args:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
@@ -44,22 +52,46 @@ class DataQuality:
             vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
             sample: [DRIFT ANALYSIS] data against which drift is tested.
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
+            results_json (str): [EXPECTATIONS] A path to the json output from a Great Expectations validation run.
+            error_tol (int): [EXPECTATIONS] Defines how many failed expectations are tolerated.
+            rel_error_tol (float): [EXPECTATIONS] Defines the maximum fraction of failed expectations, overrides error_tol.
+            minimum_coverage (float): [EXPECTATIONS] Minimum expected fraction of DataFrame columns covered by the expectation suite.
+            sensitive_features (List[str]): [BIAS & FAIRNESS] features deemed as sensitive attributes
         """
+        #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
         self._random_state = random_state
-        self._engines = { # Default list of engines
+        self._engines_legacy = { # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
             'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions),
             'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 
+        self._engines_new = {}
+        self._eval_args = { # Argument lists for different engines
+        # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
+        # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
+        # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args) for name, engine in self.engines.items()}
+            'expectations': [results_json_path, df, error_tol, rel_error_tol, minimum_coverage]
+        }
+
         # Engines based on mandatory arguments
         if label is not None:
-            self._engines['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
+            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
         else:
             print('Label is not defined. Skipping LABELLING engine.')
+        if len(sensitive_features)>0:
+            self._engines_legacy['bias&fairness'] = BiasFairness(df=df, sensitive_features=sensitive_features,
+                                                                 label=label, random_state=self.random_state)
+        else:
+            print('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
+        if results_json_path is not None:
+            self._engines_new['expectations'] = DataExpectationsReporter()
+        else:
+            print('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
+
 
     def __clean_warnings(self):
         """Deduplicates and sorts the list of warnings."""
@@ -80,7 +112,7 @@ class DataQuality:
     @property
     def engines(self):
         "Dictionary of instantiated engines to run data quality analysis."
-        return self._engines
+        return {**self._engines_legacy, **self._engines_new}
 
     @property
     def random_state(self):
@@ -103,7 +135,7 @@ class DataQuality:
 
     def evaluate(self):
         "Runs all the individual data quality checks and aggregates the results."
-        results = {name: engine.evaluate() for name, engine in self.engines.items()}
+        results = {name: engine.evaluate(*self._eval_args.get(name,[])) for name, engine in self.engines.items()}
         return results
 
     def report(self):

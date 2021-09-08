@@ -105,7 +105,7 @@ class DataExpectationsReporter(QualityEngine):
                 if isinstance(kwarg, str):
                     kwarg = [kwarg]
                 column_coverage.update(kwarg)
-        assert column_coverage.issubset(df_column_set), "The validation run appears to come from another DataFrame."
+        assert column_coverage.issubset(df_column_set), "The column mismatch suggests that the validation run originates from another DataFrame."
         coverage_fraction = len(column_coverage)/len(df_column_set)
         if coverage_fraction < minimum_coverage:
             self.store_warning(
@@ -178,15 +178,15 @@ failed expectations.".format(
         self._warnings = list() # reset the warnings to avoid duplicates
         df = df if isinstance(df, pd.DataFrame) else None
         results = {}
-        results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         if df is not None:
             try: # if anything fails
                 results['Coverage Fraction'] = self._coverage_fraction(
                     results_json_path, df, minimum_coverage=minimum_coverage)
-            except Exception as exc: # print a Warning and log the message
-                print('WARNING: Skipping Coverage Fraction due to a found dataset-expectation suite mismatch.')
-                results['Coverage Fraction'] = "[ERROR] Failed to compute. Original exception: "+f"{exc}"
+            except AssertionError as exc: # print a Warning and log the message
+                print("['DATA EXPECTATIONS'] Canceled Data Expectations engine execution due to dataset-expectation suite mismatch.")
+                return "[ERROR] Canceled computation. Original exception: "+f"{exc}"
         else:
             print("A valid DataFrame was not passed, skipping coverage fraction test.")
+        results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
         return results
