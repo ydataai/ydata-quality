@@ -12,7 +12,7 @@ from ydata_quality.core import QualityEngine, QualityWarning
 class VMVIdentifier(QualityEngine):
     "Engine for running analysis on valued missing values."
 
-    def __init__(self, df: pd.DataFrame, vmv_extensions: Optional[list]=[], random_state=42):
+    def __init__(self, df: pd.DataFrame, vmv_extensions: Optional[list]=[], random_state: Optional[int]=42):
         """
         Args:
             df (pd.DataFrame): DataFrame used to run the missing value analysis.

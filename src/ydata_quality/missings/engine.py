@@ -15,7 +15,7 @@ from ydata_quality.utils.modelling import (baseline_performance,
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
-    def __init__(self, df: pd.DataFrame, target: Optional[str] = None, random_state=42):
+    def __init__(self, df: pd.DataFrame, target: Optional[str] = None, random_state: Optional[int]=42):
         """
         Args:
             df (pd.DataFrame): reference DataFrame used to run the missing value analysis.

@@ -6,6 +6,7 @@ from collections import Counter
 from typing import Optional
 
 import pandas as pd
+from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.modelling import infer_dtypes
@@ -14,7 +15,7 @@ from ydata_quality.utils.modelling import infer_dtypes
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, random_state: int, label: str = None, dtypes: dict = None):
+    def __init__(self, df: pd.DataFrame, random_state: Optional[int], label: str = None, dtypes: dict = None):
         self._df = df
         self._warnings = list()
         self._tests = []
@@ -71,7 +72,6 @@ broad dtype list: {}.".format(supported_dtypes)
     @random_state.setter
     def random_state(self, new_state):
         "Sets new state to random state."
-        from numpy import random
         try:
             self._random_state = new_state
             random.seed(self.random_state)

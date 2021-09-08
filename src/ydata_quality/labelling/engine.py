@@ -1,7 +1,7 @@
 """
 Implementation of LabelInspector engine class to run label quality analysis.
 """
-from typing import Union
+from typing import Union, Optional
 
 import pandas as pd
 
@@ -13,7 +13,7 @@ from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
                                            standard_transform)
 
 
-def LabelInspector(df, label, random_state=42):
+def LabelInspector(df, label, random_state: Optional[int]=42):
     """Instantiate this label inspector class.
     Runs a label type inference to instantiate the correct label inspector."""
     label_dtype = infer_dtypes(df[label])[label]  # Label column dtype inferral
@@ -75,7 +75,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
     """Engine for running analysis on categorical labels.
     Ordinal labels can be handled if passed as categorical."""
 
-    def __init__(self, df: pd.DataFrame, label: str, random_state):
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]):
         super().__init__(df=df, label=label, random_state=random_state)
         self._centroids = None
         self._tests = ["missing_labels", "few_labels", "unbalanced_classes",

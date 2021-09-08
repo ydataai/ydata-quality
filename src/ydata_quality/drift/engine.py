@@ -5,7 +5,7 @@ from typing import Callable, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.random import rand
+
 import pandas as pd
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
