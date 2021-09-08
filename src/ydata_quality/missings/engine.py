@@ -21,6 +21,7 @@ class MissingsProfiler(QualityEngine):
             df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
             target (str, optional): target
         """
+        #TODO: Rename 'target' argument to 'label' standard of QualityEngine
         super().__init__(df=df)
         self._target = target
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
@@ -135,13 +136,13 @@ class MissingsProfiler(QualityEngine):
         # Guesstimate the prediction type
         prediction_type = self.__get_prediction_type()
         results = pd.DataFrame({
-            c: performance_per_missing_value(df=self.df, feature=c, target=self.target, type=prediction_type)
+            c: performance_per_missing_value(df=self.df, feature=c, target=self.target, task=prediction_type)
             for c in cols
         })
 
         # Normalize the results with a baseline performance.
         if normalize:
-            baseline = baseline_performance(df=self.df, target=self.target, type=prediction_type)
+            baseline = baseline_performance(df=self.df, target=self.target, task=prediction_type)
             results = results / baseline
 
         return results
