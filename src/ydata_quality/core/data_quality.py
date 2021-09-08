@@ -20,6 +20,7 @@ class DataQuality:
     def __init__(self,
                     df: pd.DataFrame,
                     label: str = None,
+                    random_state: int  = 42,
                     entities: List[Union[str, List[str]]] = [],
                     vmv_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
@@ -37,6 +38,8 @@ class DataQuality:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
             label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
+            random_state (int): Integer seed for random reproducibility. Default is 42.
+                Set to None for fully random behaviour, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
             sample: [DRIFT ANALYSIS] data against which drift is tested.
@@ -44,16 +47,17 @@ class DataQuality:
         """
         self.df = df
         self._warnings = list()
+        self._random_state = random_state
         self._engines = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities),
-            'missings': MissingsProfiler(df=df, target=label),
-            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions),
-            'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model)
+            'duplicates': DuplicateChecker(df=df, entities=entities, random_state=self.random_state),
+            'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
+            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions, random_state=self.random_state),
+            'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 
         # Engines based on mandatory arguments
         if label is not None:
-            self._engines['labelling'] = LabelInspector(df=df, label=label)
+            self._engines['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
         else:
             print('Label is not defined. Skipping LABELLING engine.')
 
@@ -77,6 +81,20 @@ class DataQuality:
     def engines(self):
         "Dictionary of instantiated engines to run data quality analysis."
         return self._engines
+
+    @property
+    def random_state(self):
+        "Random state passed to individual engines on evaluate."
+        return self._random_state
+
+    @random_state.setter
+    def random_state(self, new_state):
+        "Sets new state to random state."
+        if new_state==None or (isinstance(new_state, int) and new_state>=0):
+            self._random_state = new_state
+        else:
+            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to 42.')
+            self._random_state = 42
 
     def __store_warnings(self):
         "Appends all warnings from individiual engines into warnings of DataQuality main class."

@@ -14,12 +14,13 @@ from ydata_quality.utils.modelling import infer_dtypes
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, label: str = None, dtypes: dict = None):
+    def __init__(self, df: pd.DataFrame, random_state: int, label: str = None, dtypes: dict = None):
         self._df = df
         self._warnings = list()
         self._tests = []
         self._label = label
         self._dtypes = dtypes
+        self._random_state = random_state
 
     @property
     def df(self):
@@ -61,6 +62,23 @@ broad dtype list: {}.".format(supported_dtypes)
             for col, dtype in _dtypes.items():
                 dtypes[col] = dtype
         self._dtypes = dtypes
+
+    @property
+    def random_state(self):
+        "Last set random state."
+        return self._random_state
+
+    @random_state.setter
+    def random_state(self, new_state):
+        "Sets new state to random state."
+        from numpy import random
+        try:
+            self._random_state = new_state
+            random.seed(self.random_state)
+        except:
+            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
+            self._random_state = None
+            random.seed(self.random_state)
 
     def __clean_warnings(self):
         """Deduplicates and sorts the list of warnings."""

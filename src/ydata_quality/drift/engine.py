@@ -5,6 +5,7 @@ from typing import Callable, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.random import rand
 import pandas as pd
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
@@ -69,7 +70,7 @@ class DriftAnalyser(QualityEngine):
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
         label: Optional[str] = None, model: Callable = None, holdout: float = 0.2,
-        random_state: Optional[int] = 0):
+        random_state: Optional[int] = 42):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:
@@ -84,12 +85,11 @@ class DriftAnalyser(QualityEngine):
             random_state (Optional, int): Seed used to guarantee reproducibility of the random sample splits.
                 Pass None for no reproducibility.
         """
-        super().__init__(df=ref, label=label)
+        super().__init__(df=ref, label=label, random_state=random_state)
         self.sample = sample
         self._model = model
         self.has_model = None
-        self._random_state = random_state
-        self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self._random_state)
+        self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self.random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
 
@@ -194,7 +194,7 @@ class DriftAnalyser(QualityEngine):
         bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
         all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         for idx, fraction in enumerate(leftover_fractions):
-            downsample, _ = random_split(covariates, fraction, random_state=self._random_state)
+            downsample, _ = random_split(covariates, fraction, random_state=self.random_state)
             p_vals = []
             for column in covariates.columns:
                 _, p_val, _ = self._2sample_feat_good_fit(ref_sample = holdout[column],
@@ -223,10 +223,10 @@ class DriftAnalyser(QualityEngine):
         labels = self._remaining_data[self.label].copy()
         holdout = self._holdout[self.label]
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
-        p_values = pd.DataFrame(index=["{0:.0%}".format(fraction) for fraction in leftover_fractions],
+        p_values = pd.DataFrame(index=["{:.0%}".format(fraction) for fraction in leftover_fractions],
             columns=['Label p-value', 'p-value threshold'])
         for idx, fraction in enumerate(leftover_fractions):
-            downsample, _ = random_split(labels, fraction, random_state=self._random_state)
+            downsample, _ = random_split(labels, fraction, random_state=self.random_state)
             _, p_val, test_name = self._2sample_feat_good_fit(ref_sample = holdout,
                 test_sample = downsample)
             p_values['Label p-value'].iloc[idx] = p_val

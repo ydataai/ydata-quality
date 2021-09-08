@@ -12,10 +12,9 @@ from ydata_quality.core import QualityEngine, QualityWarning
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = []):
-        self._df = df
+    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], random_state=42):
+        super().__init__(df=df, random_state=random_state)
         self._entities = entities
-        self._warnings = set()
         self._tests = ["exact_duplicates", "entity_duplicates", "duplicate_columns"]
 
     @property

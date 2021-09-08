@@ -12,13 +12,13 @@ from ydata_quality.core import QualityEngine, QualityWarning
 class VMVIdentifier(QualityEngine):
     "Engine for running analysis on valued missing values."
 
-    def __init__(self, df: pd.DataFrame, vmv_extensions: Optional[list]=[]):
+    def __init__(self, df: pd.DataFrame, vmv_extensions: Optional[list]=[], random_state=42):
         """
         Args:
             df (pd.DataFrame): DataFrame used to run the missing value analysis.
             vmv_extensions: A list of user provided Value Missing Values to append to defaults.
         """
-        super().__init__(df=df)
+        super().__init__(df=df, random_state=random_state)
         self._tests = ["flatlines", "predefined_valued_missing_values"]
         self._default_vmvs = None
         self._flatline_index = {}
