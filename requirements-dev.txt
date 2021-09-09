@@ -1,5 +1,6 @@
 isort
 pylint
 pytest
-sphinx
+sphinx==4.1.2
+sphinx_rtd_theme
 myst-parser
