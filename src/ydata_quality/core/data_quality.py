@@ -20,7 +20,7 @@ class DataQuality:
     def __init__(self,
                     df: pd.DataFrame,
                     label: str = None,
-                    random_state: int  = None,
+                    random_state: Optional[int]  = None,
                     entities: List[Union[str, List[str]]] = [],
                     vmv_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
@@ -38,7 +38,7 @@ class DataQuality:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
             label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
-            random_state (int): Integer seed for random reproducibility. Default is 42.
+            random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behaviour, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
@@ -49,9 +49,9 @@ class DataQuality:
         self._warnings = list()
         self._random_state = random_state
         self._engines = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities, random_state=self.random_state),
+            'duplicates': DuplicateChecker(df=df, entities=entities),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
-            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions, random_state=self.random_state),
+            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions),
             'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 

@@ -15,7 +15,7 @@ from ydata_quality.utils.modelling import infer_dtypes
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, random_state: Optional[int], label: str = None, dtypes: dict = None):
+    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None):
         self._df = df
         self._warnings = list()
         self._tests = []
