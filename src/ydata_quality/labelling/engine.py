@@ -18,14 +18,14 @@ def LabelInspector(df, label, random_state: Optional[int]=None):
     Runs a label type inference to instantiate the correct label inspector."""
     label_dtype = infer_dtypes(df[label])[label]  # Label column dtype inferral
     if label_dtype == 'categorical':
-        return CategoricalLabelInspector(df, label, random_state=None)
+        return CategoricalLabelInspector(df, label, random_state=random_state)
     else:
-        return NumericalLabelInspector(df, label, random_state=None)
+        return NumericalLabelInspector(df, label, random_state=random_state)
 
 class SharedLabelInspector(QualityEngine):
     """Shared structure for Numerical/Categorical Label Inspector"""
 
-    def __init__(self, df: pd.DataFrame, label: str, random_state=None):
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]=None):
         super().__init__(df=df, label=label, random_state=random_state)
         self._tdf = None
 
