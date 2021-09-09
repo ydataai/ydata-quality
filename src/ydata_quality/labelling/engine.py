@@ -13,7 +13,7 @@ from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
                                            standard_transform)
 
 
-def LabelInspector(df, label, random_state: Optional[int]=42):
+def LabelInspector(df, label, random_state: Optional[int]=None):
     """Instantiate this label inspector class.
     Runs a label type inference to instantiate the correct label inspector."""
     label_dtype = infer_dtypes(df[label])[label]  # Label column dtype inferral

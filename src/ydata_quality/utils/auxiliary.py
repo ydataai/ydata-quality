@@ -32,6 +32,7 @@ def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle:
         split_size (float): Fraction of the sample to be taken
         shuffle (bool): If True shuffles sample rows before splitting
         random_state (int): If an int is passed, the random process is reproducible using the provided seed"""
+    assert random_state is None or (isinstance(random_state, int) and random_state>=0), 'The random seed must be a non-negative integer or None.'
     assert 0<= split_size <=1, 'split_size must be a fraction, i.e. a float in the [0,1] interval.'
     if shuffle:  # Shuffle dataset rows
         sample = df.sample(frac=1, random_state=random_state)

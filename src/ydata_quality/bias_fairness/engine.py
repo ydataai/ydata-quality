@@ -22,7 +22,7 @@ class BiasFairness(QualityEngine):
     """
 
     def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None,
-        random_state: Optional[int] = 42):
+        random_state: Optional[int] = None):
         """
         Args
             df (pd.DataFrame): reference DataFrame used to run the analysis

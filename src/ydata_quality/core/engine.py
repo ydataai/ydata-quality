@@ -78,7 +78,6 @@ broad dtype list: {}.".format(supported_dtypes)
         except:
             print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
             self._random_state = None
-            random.seed(self.random_state)
 
     def __clean_warnings(self):
         """Deduplicates and sorts the list of warnings."""

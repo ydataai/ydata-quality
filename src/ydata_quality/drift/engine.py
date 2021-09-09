@@ -70,7 +70,7 @@ class DriftAnalyser(QualityEngine):
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
         label: Optional[str] = None, model: Callable = None, holdout: float = 0.2,
-        random_state: Optional[int] = 42):
+        random_state: Optional[int] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:

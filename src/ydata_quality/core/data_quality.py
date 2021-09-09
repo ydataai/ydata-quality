@@ -20,7 +20,7 @@ class DataQuality:
     def __init__(self,
                     df: pd.DataFrame,
                     label: str = None,
-                    random_state: int  = 42,
+                    random_state: int  = None,
                     entities: List[Union[str, List[str]]] = [],
                     vmv_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
@@ -93,8 +93,8 @@ class DataQuality:
         if new_state==None or (isinstance(new_state, int) and new_state>=0):
             self._random_state = new_state
         else:
-            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to 42.')
-            self._random_state = 42
+            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
+            self._random_state = None
 
     def __store_warnings(self):
         "Appends all warnings from individiual engines into warnings of DataQuality main class."
