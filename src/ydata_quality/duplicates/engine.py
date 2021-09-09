@@ -13,9 +13,8 @@ class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
     def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = []):
-        self._df = df
+        super().__init__(df=df)
         self._entities = entities
-        self._warnings = set()
         self._tests = ["exact_duplicates", "entity_duplicates", "duplicate_columns"]
 
     @property

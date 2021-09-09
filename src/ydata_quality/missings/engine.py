@@ -15,14 +15,14 @@ from ydata_quality.utils.modelling import (baseline_performance,
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
-    def __init__(self, df: pd.DataFrame, target: Optional[str] = None):
+    def __init__(self, df: pd.DataFrame, target: Optional[str] = None, random_state: Optional[int]=None):
         """
         Args:
             df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
             target (str, optional): target
         """
         #TODO: Rename 'target' argument to 'label' standard of QualityEngine
-        super().__init__(df=df)
+        super().__init__(df=df, random_state=random_state)
         self._target = target
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
 

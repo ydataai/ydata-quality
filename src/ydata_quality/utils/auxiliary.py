@@ -24,8 +24,7 @@ def test_load_json_path(json_path: str) -> dict:
         raise IOError("Expected a path to a json file.")
     return json_dict
 
-def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=True,
-                random_state: int=None) -> Tuple[pd.DataFrame]:
+def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle: bool=True, random_state: int=None) -> Tuple[pd.DataFrame]:
     """Shuffles a DataFrame and splits it into 2 partitions according to split_size.
     Returns a tuple with the split first (partition corresponding to split_size, and remaining second).
     Args:
@@ -33,10 +32,10 @@ def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle=
         split_size (float): Fraction of the sample to be taken
         shuffle (bool): If True shuffles sample rows before splitting
         random_state (int): If an int is passed, the random process is reproducible using the provided seed"""
+    assert random_state is None or (isinstance(random_state, int) and random_state>=0), 'The random seed must be a non-negative integer or None.'
     assert 0<= split_size <=1, 'split_size must be a fraction, i.e. a float in the [0,1] interval.'
-    assert random_state is None or isinstance(random_state, int), 'The random seed must be an integer or None.'
     if shuffle:  # Shuffle dataset rows
-        sample = df.sample(frac=1, random_state=random_state)  # An int random_state ensures reproducibility
+        sample = df.sample(frac=1, random_state=random_state)
     split_len = int(sample.shape[0]*split_size)
     split = sample.iloc[:split_len]
     remainder = sample.iloc[split_len:]

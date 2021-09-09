@@ -21,14 +21,15 @@ class BiasFairness(QualityEngine):
         - Performance Discrimination: checks for performance disparities on sensitive attributes
     """
 
-    def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None):
+    def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None,
+        random_state: Optional[int] = None):
         """
         Args
             df (pd.DataFrame): reference DataFrame used to run the analysis
             sensitive_features (List[str]): features deemed as sensitive attributes
             label (str, optional): target feature to be predicted
         """
-        super().__init__(df=df, label=label)
+        super().__init__(df=df, label=label, random_state=random_state)
         self._sensitive_features = sensitive_features
         self._tests = ["performance_discrimination", "proxy_identification",
                         "sensitive_predictability", "sensitive_representativity"]

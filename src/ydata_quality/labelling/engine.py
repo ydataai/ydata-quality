@@ -1,7 +1,7 @@
 """
 Implementation of LabelInspector engine class to run label quality analysis.
 """
-from typing import Union
+from typing import Union, Optional
 
 import pandas as pd
 
@@ -13,20 +13,20 @@ from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
                                            standard_transform)
 
 
-def LabelInspector(df, label):
+def LabelInspector(df, label, random_state: Optional[int]=None):
     """Instantiate this label inspector class.
     Runs a label type inference to instantiate the correct label inspector."""
     label_dtype = infer_dtypes(df[label])[label]  # Label column dtype inferral
     if label_dtype == 'categorical':
-        return CategoricalLabelInspector(df, label)
+        return CategoricalLabelInspector(df, label, random_state=random_state)
     else:
-        return NumericalLabelInspector(df, label)
+        return NumericalLabelInspector(df, label, random_state=random_state)
 
 class SharedLabelInspector(QualityEngine):
     """Shared structure for Numerical/Categorical Label Inspector"""
 
-    def __init__(self, df: pd.DataFrame, label: str):
-        super().__init__(df=df, label=label)
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]=None):
+        super().__init__(df=df, label=label, random_state=random_state)
         self._tdf = None
 
     @property
@@ -75,8 +75,8 @@ class CategoricalLabelInspector(SharedLabelInspector):
     """Engine for running analysis on categorical labels.
     Ordinal labels can be handled if passed as categorical."""
 
-    def __init__(self, df: pd.DataFrame, label: str):
-        super().__init__(df=df, label=label)
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]):
+        super().__init__(df=df, label=label, random_state=random_state)
         self._centroids = None
         self._tests = ["missing_labels", "few_labels", "unbalanced_classes",
         "one_vs_rest_performance", "outlier_detection"]
@@ -240,8 +240,8 @@ deviations of intra-cluster distances to the respective centroids was used to de
 class NumericalLabelInspector(SharedLabelInspector):
     "Engine for running analyis on numerical labels."
 
-    def __init__(self, df: pd.DataFrame, label: str):
-        super().__init__(df, label)
+    def __init__(self, df: pd.DataFrame, label: str, random_state):
+        super().__init__(df=df, label=label, random_state=random_state)
         self._tests = ["missing_labels", "test_normality", "outlier_detection"]
 
     def _GMM_clusters(self, max_clusters):
