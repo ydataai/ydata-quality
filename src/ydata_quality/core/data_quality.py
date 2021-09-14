@@ -11,7 +11,7 @@ from ydata_quality.drift import DriftAnalyser
 from ydata_quality.duplicates import DuplicateChecker
 from ydata_quality.labelling import LabelInspector
 from ydata_quality.missings import MissingsProfiler
-from ydata_quality.valued_missing_values import VMVIdentifier
+from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
 
@@ -23,7 +23,7 @@ class DataQuality:
                     label: str = None,
                     random_state: Optional[int]  = None,
                     entities: List[Union[str, List[str]]] = [],
-                    vmv_extensions: Optional[list]=[],
+                    ed_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
                     model: Callable = None,
                     results_json_path: str = None,
@@ -49,7 +49,7 @@ class DataQuality:
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behaviour, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
-            vmv_extensions: [VALUED MISSING VALUES] A list of user provided valued missing values to append to defaults.
+            ed_extensions: [ERRONEOUS DATA] A list of user provided erroneous data values to append to defaults.
             sample: [DRIFT ANALYSIS] data against which drift is tested.
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
             results_json (str): [EXPECTATIONS] A path to the json output from a Great Expectations validation run.
@@ -65,7 +65,7 @@ class DataQuality:
         self._engines_legacy = { # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
-            'valued-missing-values': VMVIdentifier(df=df, vmv_extensions=vmv_extensions),
+            'valued-missing-values': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
             'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 
