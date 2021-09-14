@@ -107,6 +107,7 @@ class DataQuality:
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
+        filtered = filtered[0] if len(filtered)==1 else filtered # return single
         return filtered
 
     @property
