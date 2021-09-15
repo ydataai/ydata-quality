@@ -37,7 +37,7 @@ class DataQuality:
         - Duplicates
         - Missing Values
         - Labelling
-        - Valued Missing Values
+        - Erroneous Data
         - Drift Analysis
         - Data Expectations
         - Bias & Fairness
@@ -65,8 +65,8 @@ class DataQuality:
         self._engines_legacy = { # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
-            'valued-missing-values': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
-            'drift-analysis': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
+            'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
+            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 
         self._engines_new = {}
