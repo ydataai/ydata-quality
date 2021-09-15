@@ -1,5 +1,5 @@
 """
-Implementation of Valued Missing Values Identifier engine class to run valued missing value analysis.
+Implementation of Erroneous Data Identifier engine class to run erroneous data analysis.
 """
 
 from typing import Optional
@@ -9,44 +9,44 @@ import pandas as pd
 from ydata_quality.core import QualityEngine, QualityWarning
 
 
-class VMVIdentifier(QualityEngine):
-    "Engine for running analysis on valued missing values."
+class ErroneousDataIdentifier(QualityEngine):
+    "Engine for running analysis on erroneous data."
 
-    def __init__(self, df: pd.DataFrame, vmv_extensions: Optional[list]=[]):
+    def __init__(self, df: pd.DataFrame, ed_extensions: Optional[list]=[]):
         """
         Args:
-            df (pd.DataFrame): DataFrame used to run the missing value analysis.
-            vmv_extensions: A list of user provided Value Missing Values to append to defaults.
+            df (pd.DataFrame): DataFrame used to run the erroneous data analysis.
+            ed_extensions: A list of user provided erroneous data values to append to defaults.
         """
         super().__init__(df=df)
-        self._tests = ["flatlines", "predefined_valued_missing_values"]
-        self._default_vmvs = None
+        self._tests = ["flatlines", "predefined_erroneous_data"]
+        self._default_ed = None
         self._flatline_index = {}
         self.__default_index_name = '__index'
-        self.vmvs = vmv_extensions
+        self.err_data = ed_extensions
 
     @property
-    def default_vmvs(self):
-        """Returns the default list of Valued Missing Values.
-        VMVs of string type are case insensitive during search."""
-        if self._default_vmvs is None:
-            self._default_vmvs = set([vmv.lower() if isinstance(vmv, str) else vmv for vmv in ["?", "UNK", "Unknown", "N/A", "NA", "", "(blank)"]])
-        return self._default_vmvs
+    def default_err_data(self):
+        """Returns the default list of erroneous data values.
+        ED values of string type are case insensitive during search."""
+        if self._default_ed is None:
+            self._default_ed = set([edv.lower() if isinstance(edv, str) else edv for edv in ["?", "UNK", "Unknown", "N/A", "NA", "", "(blank)"]])
+        return self._default_ed
 
     @property
-    def vmvs(self):
-        """Returns the extended Value Missing Values (default plus user provided).
-        VMVs of string type are case insensitive during search."""
-        if not  self._vmvs:
-            self._vmvs = self.default_vmvs
-        return self._vmvs
+    def err_data(self):
+        """Returns the extended erroneous data values (default plus user provided).
+        ED values of string type are case insensitive during search."""
+        if not  self._edv:
+            self._edv = self.default_err_data
+        return self._edv
 
-    @vmvs.setter
-    def vmvs(self, vmv_extensions: Optional[list] = []):
-        """Allows extending default Valued Missing Values list, append only.
-        VMVs of string type are case insensitive during search."""
-        assert isinstance(vmv_extensions, list), "vmv extensions must be passed as a list"
-        self._vmvs = self.default_vmvs.union(set([vmv.lower() if isinstance(vmv, str) else vmv for vmv in vmv_extensions]))
+    @err_data.setter
+    def err_data(self, err_data_extensions: Optional[list] = []):
+        """Allows extending default erroneous data values list, append only.
+        ED values of string type are case insensitive during search."""
+        assert isinstance(err_data_extensions, list), "Erroneous data value extensions must be passed as a list."
+        self._edv = self.default_err_data.union(set([edv.lower() if isinstance(edv, str) else edv for edv in err_data_extensions]))
 
     def __get_flatline_index(self, column_name: str, th: Optional[int] = 1):
         """Returns an index for flatline events on a passed column.
@@ -89,45 +89,45 @@ class VMVIdentifier(QualityEngine):
             total_flatlines = sum([flts.shape[0] for flts in flatlines.values()])
             self.store_warning(
                 QualityWarning(
-                    test='Flatlines', category='Valued Missing Values', priority=2, data=flatlines,
+                    test='Flatlines', category='Erroneous Data', priority=2, data=flatlines,
                     description=f"Found {total_flatlines} flatline events with a minimun length of {th} among the columns {set(flatlines.keys())}."
             ))
             return flatlines
         else:
             print("[FLATLINES] No flatline events with a minimum length of {} were found.".format(th))
 
-    def predefined_valued_missing_values(self, skip: list=[], short: bool = True):
-        """Runs a check against a list of predefined Valued Missing Values.
-        Will always use the extended list if user provided any.
+    def predefined_erroneous_data(self, skip: list=[], short: bool = True):
+        """Runs a check against a list of predefined erroneous data values.
+        Will always use the extended list if user provided any extension to the defaults.
         Raises warning based on the existence of these values.
-        VMVs of string type are case insensitive during search.
+        Erroneous data values of string type are case insensitive during search.
         Returns a DataFrame with count distribution for each predefined type over each column.
         Arguments:
-            skip: List of columns that will not be target of search for vmvs.
+            skip: List of columns that will not be target of search for predefined ED.
                 Pass '__index' in skip to skip looking for flatlines at the index.
-            short: Instruct engine to return only for VMVs and columns where VMVs were detected"""
+            short: Instruct engine to return only for ED values and columns where ED were detected"""
         df = self.df.copy()  # Index will not be covered in column iteration
         df[self.__default_index_name] = df.index  # Index now in columns to be processed
         check_cols = set(df.columns).difference(set(skip))
         df = df[check_cols]
-        vmvs = pd.DataFrame(index=self._vmvs, columns=check_cols)
-        for vmv in self._vmvs:
-            check_vmv = lambda x: x.lower()==vmv if isinstance(x,str) else x==vmv
-            vmvs.loc[vmv] = df.applymap(check_vmv).sum()
+        eds = pd.DataFrame(index=self._edv, columns=check_cols)
+        for ed in self._edv:
+            check_ed = lambda x: x.lower()==ed if isinstance(x,str) else x==ed
+            eds.loc[ed] = df.applymap(check_ed).sum()
         if short:
-            no_vmv_cols = vmvs.columns[vmvs.sum()==0]
-            no_vmv_rows = vmvs.index[vmvs.sum(axis=1)==0]
-            vmvs.drop(no_vmv_cols, axis=1, inplace=True)
-            vmvs.drop(no_vmv_rows, inplace=True)
-        if vmvs.empty:
-            print("[PREDEFINED VALUED MISSING VALUES] No predefined vmvs from  the set {} were found in the dataset.".format(
-                self.vmvs
+            no_ed_cols = eds.columns[eds.sum()==0]
+            no_ed_rows = eds.index[eds.sum(axis=1)==0]
+            eds.drop(no_ed_cols, axis=1, inplace=True)
+            eds.drop(no_ed_rows, inplace=True)
+        if eds.empty:
+            print("[PREDEFINED ERRONEOUS DATA] No predefined ED values from  the set {} were found in the dataset.".format(
+                self.err_data
             ))
         else:
-            total_vmvs = vmvs.sum().sum()
+            total_eds = eds.sum().sum()
             self.store_warning(
                 QualityWarning(
-                    test='Predefined Valued Missing Values', category='Valued Missing Values', priority=2, data=vmvs,
-                    description=f"Found {total_vmvs} vmvs in the dataset."
+                    test='Predefined Erroneous Data', category='Erroneous Data', priority=2, data=eds,
+                    description=f"Found {total_eds} ED values in the dataset."
             ))
-            return vmvs
+            return eds
