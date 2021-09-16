@@ -1,5 +1,8 @@
 # ydata-quality
-YData open-source lib for Data Quality.
+
+ydata_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
+
+A holistic view of the data can only be captured through a look at data from multiple dimensions and `ydata_quality` evaluates it in a modular way wrapped into a single Data Quality engine. This repository contains the core python source scripts and walkthrough tutorials.
 
 # Quickstart
 
@@ -10,23 +13,50 @@ Binary installers for the latest released version are available at the [Python P
 pip install ydata-quality
 ```
 
-### Creating a virtual environment
+### Comprehensive quality check in few lines of code
 
-Alternatively, you can create a virtual environment, clone the repository and install locally.
+```python
+from ydata_quality import DataQuality
+import pandas as pd
 
-```bash
-# create the virtual environment
-$ python -m venv .venv
+#Load in the data
+df = pd.read_csv(f'../datasets/transformed/census_10k.csv')
 
-# activate the environment
-$ . ./.venv/bin/activate
+# create a DataQuality object from the main class that holds all quality modules
+dq = DataQuality(df=df)
 
-# build the package
-$ make package
+# run the tests
+results = dq.evaluate()
 
-# install from package
-$ make install
+# Output a report of the quality issues found by the engines
+dq.report() 
 ```
+```python
+Warnings count by priority:
+	Priority 1: 1 warning(s)
+	Priority 2: 3 warning(s)
+	TOTAL: 4 warning(s)
+List of warnings sorted by priority:
+	[DUPLICATE COLUMNS] Found 1 columns with exactly the same feature values as other columns. (Priority 1: heavy impact expected)
+	[EXACT DUPLICATES] Found 3 instances with exact duplicate feature values. (Priority 2: usage allowed, limited human intelligibility)
+	[FLATLINES] Found 4627 flatline events with a minimun length of 5 among the columns {'marital-status', 'workclass', 'income', 'native-country', 'capital-gain', 'capital-loss', 'education', 'occupation', 'workclass2', 'sex', 'education-num', 'hours-per-week', 'relationship', 'race'}. (Priority 2: usage allowed, limited human intelligibility)
+	[PREDEFINED ERRONEOUS DATA] Found 1960 ED values in the dataset. (Priority 2: usage allowed, limited human intelligibility)
+```
+# Examples
+
+Here you can find walkthrough tutorials and examples to familarize with different modules of `ydata_quality`
+
+- [Start Here for Quick and Overall Walkthrough](https://github.com/ydataai/ydata-quality/blob/master/tutorials/main.ipynb)
+
+To dive into any focussed module, and to understand how they work, here are tutorial notebooks:
+1. [Bias and Fairness](https://github.com/ydataai/ydata-quality/blob/master/tutorials/bias_fairness.ipynb)
+2.  [Data Expectations](https://github.com/ydataai/ydata-quality/blob/master/tutorials/data_expectations.ipynb)
+3.  [Data Relations](https://github.com/ydataai/ydata-quality/blob/master/tutorials/data_relations.ipynb)
+4.  [Drift Analysis](https://github.com/ydataai/ydata-quality/blob/master/tutorials/drift.ipynb)
+5.  [Duplicates](https://github.com/ydataai/ydata-quality/blob/master/tutorials/duplicates.ipynb)
+6.  Labelling: [Categoricals](https://github.com/ydataai/ydata-quality/blob/master/tutorials/labelling_categorical.ipynb) and [Numericals](https://github.com/ydataai/ydata-quality/blob/master/tutorials/labelling_numerical.ipynb)
+7.  [Missings](https://github.com/ydataai/ydata-quality/blob/master/tutorials/missings.ipynb)
+8.  [Erroneous Data](https://github.com/ydataai/ydata-quality/blob/master/tutorials/erroneous_data.ipynb)
 
 # Contributing
 We are open to collaboration! If you want to start contributing you only need to:
@@ -35,7 +65,7 @@ We are open to collaboration! If you want to start contributing you only need to
 3. We would review every PRs and either accept or ask for revisions.
 
 # Support
-[TBD] Slack/GitHub Discussions
+For support in using this library, please join the #help Slack channel. The Slack community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Slack community!](http://slack.ydata.ai/)
 
 # License
 [GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
