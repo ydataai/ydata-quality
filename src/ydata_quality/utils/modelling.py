@@ -216,8 +216,8 @@ def infer_dtypes(df: Union[pd.DataFrame, pd.Series], skip: Union[list, set] = []
 
 def standard_transform(df, dtypes, skip=[], robust = False):
     """Applies standard transformation to the dataset (imputation, centering and scaling), returns transformed data and the fitted transformer.
-    Numerical data is imputated with mean, centered and scaled by 4 standard deviations.
-    Categorical data is imputated with mode. Encoding is not performed in this stage to preserve the same columns.
+    Numerical data is imputed with mean, centered and scaled by 4 standard deviations.
+    Categorical data is imputed with mode. Encoding is not performed in this stage to preserve the same columns.
     If robust is passed as True, will truncate  numerical data before computing statistics.
     [1]From 1997 Wilson, D. Randall; Martinez, Tony R. - Improved Heterogeneous Distance Functions https://arxiv.org/pdf/cs/9701101.pdf
     """
@@ -225,19 +225,19 @@ def standard_transform(df, dtypes, skip=[], robust = False):
     categorical_features = [key for key, value in dtypes.items() if value == 'categorical' and key not in skip]
     assert len(numerical_features+categorical_features+skip) == len(df.columns), 'the union of dtypes keys with skip should be the same as the df columns'
     if robust:
-        NUMERICAL_TRANSFORMER = Pipeline([
+        numeric_transformer = Pipeline([
             ('imputer', SimpleImputer()),
             ('scaler', RobustScaler(quantile_range=(5.0, 95.0)))])
     else:
-        NUMERICAL_TRANSFORMER = NUMERIC_TRANSFORMER
-    PREPROCESSOR = ColumnTransformer(
+        numeric_transformer = NUMERIC_TRANSFORMER
+    preprocessor = ColumnTransformer(
     transformers=[  # Numerical vars are scaled by 4sd so that most of the data are fit in the [-1, 1] range
-        ('num', Pipeline(NUMERICAL_TRANSFORMER.steps + [('divby4', FunctionTransformer(lambda x: x/4))]), numerical_features),
+        ('num', Pipeline(numeric_transformer.steps + [('divby4', FunctionTransformer(lambda x: x/4))]), numerical_features),
         ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent'))]), categorical_features)],
         remainder='passthrough')
     new_column_order = numerical_features+categorical_features+skip
-    tdf = pd.DataFrame(PREPROCESSOR.fit_transform(df), index = df.index, columns=new_column_order)
-    return tdf, PREPROCESSOR
+    tdf = pd.DataFrame(preprocessor.fit_transform(df), index = df.index, columns=new_column_order)
+    return tdf, preprocessor
 
 def performance_one_vs_rest(df: pd.DataFrame, label_feat: str, _class: str, dtypes=None):
     """Train a classifier to predict a class in binary fashion against all other classes.
