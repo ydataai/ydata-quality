@@ -131,12 +131,14 @@ def correlation_plotter(mat: pd.DataFrame, title: str='', symmetric: bool=True):
         title (str): A string to be used as plot title
         symmetric (bool): True to only plot the lower triangle (symmetric correlation matrix), False to plot all.
         """
-    mat = mat.iloc[1:,:-1 ] if symmetric else mat
+    mask=None
+    if symmetric:
+        mat = mat.iloc[1:,:-1]
+        mask = np.zeros_like(mat)
+        mask[np.triu_indices_from(mask, 1)] = True
     str_trunc = lambda x: x if len(x)<=9 else x[:4]+'...'+ x[-4:]
     mat.rename(columns=str_trunc, inplace=True)
-    mask = np.zeros_like(mat)
-    mask[np.triu_indices_from(mask, 1)] = True
-    plt.figure(figsize=(12,8), dpi= 100, facecolor='w', edgecolor='k')
+    plt.figure()
     ax=sb.heatmap(
         mat, cbar=True, vmin=-1, vmax=1, mask=mask if symmetric else None, annot=True, square=True,
         cmap=sb.diverging_palette(220, 20, as_cmap=True), fmt=".0%")

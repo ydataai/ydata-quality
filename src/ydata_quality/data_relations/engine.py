@@ -45,8 +45,10 @@ class DataRelationsDetector(QualityEngine):
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
-    def evaluate(self, df: pd.DataFrame, dtypes: Optional[dict] = None, label: str=None, corr_th: float=0.8,  vif_th: float=5, p_th: float=0.05) -> dict:
+    def evaluate(self, df: pd.DataFrame, dtypes: Optional[dict] = None, label: str=None, corr_th: float=0.8,  vif_th: float=5, p_th: float=0.05, plot: bool=True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
+        Note, we perform standard normalization of numerical features in order to unbias VIF and partial correlation methods.
+        This bias correction produces results equivalent to adding a constant feature to the dataset.
 
         Args:
             df (pd.DataFrame): The Pandas DataFrame on which you want to perform data relations analysis.
@@ -56,9 +58,10 @@ class DataRelationsDetector(QualityEngine):
             corr_th (float): Absolute threshold for high correlation detection. Defaults to 0.8.
             vif_th (float): Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
             p_th (float): Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
+            plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
-        self._warnings = set() # reset the warnings to avoid duplicates
+        self._warnings = [] # reset the warnings to avoid duplicates
         if not dtypes:
             dtypes = {}
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
@@ -71,8 +74,10 @@ class DataRelationsDetector(QualityEngine):
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
-        correlation_plotter(corr_mat, title='Correlations', symmetric=True)
-        correlation_plotter(p_corr_mat, title='Partial Correlations', symmetric=True)
+        if plot:
+            correlation_plotter(corr_mat, title='Correlations', symmetric=True)
+            correlation_plotter(p_corr_mat, title='Partial Correlations', symmetric=True)
+        results['Correlations'] = {'Correlation matrix': corr_mat, 'Partial correlation matrix': p_corr_mat}
         return results
 
     def _confounder_detection(self, corr_mat: pd.DataFrame, par_corr_mat: pd.DataFrame, corr_th: float) -> List[Tuple[str, str]]:
@@ -122,7 +127,7 @@ class DataRelationsDetector(QualityEngine):
         label_pcorrs = par_corr_mat.loc[label].drop(label)
         mask = np.ones(label_corrs.shape, dtype='bool')
         mask[label_corrs.abs()<=corr_th] = False # Drop pairs with zero order correlation below threshold
-        important_feats = [label_corrs.index[i] for i in np.argwhere(mask)]
+        important_feats = [label_corrs.index[i][0] for i in np.argwhere(mask)]
         summary = "[FEATURE IMPORTANCE] No important features were found in explaining {}. You might want to try lowering corr_th.".format(label)
         if len(important_feats)>0:
             summary = pd.DataFrame(data={'Correlations': label_corrs.loc[important_feats], 'Partial Correlations': label_pcorrs.loc[important_feats]})
