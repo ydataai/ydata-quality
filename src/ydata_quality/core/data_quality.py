@@ -24,6 +24,7 @@ class DataQuality:
                     label: str = None,
                     random_state: Optional[int]  = None,
                     entities: List[Union[str, List[str]]] = [],
+                    is_close: bool= False,
                     ed_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
                     model: Callable = None,
@@ -56,6 +57,7 @@ class DataQuality:
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behaviour, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
+            is_close: [DUPLICATES] Pass True to use numpy.isclose instead of pandas.equals in column comparison.
             ed_extensions: [ERRONEOUS DATA] A list of user provided erroneous data values to append to defaults.
             sample: [DRIFT ANALYSIS] data against which drift is tested.
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
@@ -75,7 +77,7 @@ class DataQuality:
         self._warnings = list()
         self._random_state = random_state
         self._engines_legacy = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities),
+            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
             'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
             'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)

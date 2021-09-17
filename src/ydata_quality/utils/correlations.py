@@ -13,6 +13,8 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor as vi
 import seaborn as sb
 import matplotlib.pyplot as plt
 
+from ydata_quality.utils.auxiliary import find_duplicate_columns
+
 
 def filter_associations(corrs: pd.DataFrame, th: float,
                         name: str = 'corr', subset: Optional[List[str]] = None) -> pd.Series:
@@ -117,11 +119,17 @@ def correlation_matrix(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
 def partial_correlation_matrix(corr_matrix: pd.DataFrame) -> pd.DataFrame:
     """Returns the matrix of full order partial correlations.
     Uses the covariance matrix inversion method."""
-    inv_corr_matrix = np.linalg.pinv(corr_matrix)
+    no_dups_corr = corr_matrix.copy()
+    # Remove duplicate columns and rows from the correlation matrix, so it has full rank and can be inverted
+    dup_lists = find_duplicate_columns(no_dups_corr.abs(), True)  # Find duplicate row lists in absolute correlation matrix
+    for col, dup_list in dup_lists.items():
+        if col in no_dups_corr.columns: # Ensures we will not drop both members of duplicate pairs
+            no_dups_corr.drop(columns=dup_list, index=dup_list, inplace=True)
+    inv_corr_matrix = np.linalg.pinv(no_dups_corr)
     scaled_diag = np.diag(np.sqrt(1 / np.diag(inv_corr_matrix)))
     partial_corr_matrix = -1 * (scaled_diag @ inv_corr_matrix @ scaled_diag)
     np.fill_diagonal(partial_corr_matrix, 1)  # Fixing scaling setting the diagonal to -1
-    return pd.DataFrame(data=partial_corr_matrix, index=corr_matrix.index, columns=corr_matrix.columns)
+    return pd.DataFrame(data=partial_corr_matrix, index=no_dups_corr.index, columns=no_dups_corr.columns)
 
 def correlation_plotter(mat: pd.DataFrame, title: str='', symmetric: bool=True):
     """Plots correlation matrix heatmaps.
@@ -138,7 +146,7 @@ def correlation_plotter(mat: pd.DataFrame, title: str='', symmetric: bool=True):
         mask[np.triu_indices_from(mask, 1)] = True
     str_trunc = lambda x: x if len(x)<=9 else x[:4]+'...'+ x[-4:]
     mat.rename(columns=str_trunc, inplace=True)
-    plt.figure()
+    plt.figure(figsize=(14,14))
     ax=sb.heatmap(
         mat, cbar=True, vmin=-1, vmax=1, mask=mask if symmetric else None, annot=True, square=True,
         cmap=sb.diverging_palette(220, 20, as_cmap=True), fmt=".0%")

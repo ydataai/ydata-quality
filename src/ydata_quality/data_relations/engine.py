@@ -86,6 +86,8 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient above threshold and partial coefficient below threshold indicate existence of confounding effects."""
+        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
+        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         mask = np.ones(corr_mat.shape, dtype='bool')
         mask[np.tril(mask)] = False # Drop pairs below diagonal
         mask[corr_mat.abs()<=corr_th] = False # Drop pairs with zero order correlation below threshold
@@ -104,6 +106,8 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient below threshold and partial coefficient above threshold indicate existence of collider effects."""
+        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
+        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         mask = np.ones(corr_mat.shape, dtype='bool')
         mask[np.tril(mask)] = False # Drop pairs below diagonal
         mask[corr_mat.abs()>corr_th] = False # Drop pairs with zero order correlation above threshold
@@ -122,6 +126,8 @@ class DataRelationsDetector(QualityEngine):
 
         This method returns a summary of all detected important features.
         The summary contains zero, full order partial correlation and a note regarding potential confounding."""
+        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
+        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         assert label in corr_mat.columns, "The provided label {} does not exist as a column in the DataFrame.".format(label)
         label_corrs = corr_mat.loc[label].drop(label)
         label_pcorrs = par_corr_mat.loc[label].drop(label)
