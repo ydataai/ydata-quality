@@ -6,7 +6,7 @@ from typing import Callable, List, Optional, Union
 
 import pandas as pd
 
-from ydata_quality.core.warnings import Priority, QualityWarning
+from ydata_quality.core.warnings import Priority, QualityWarning, WarningStyling
 from ydata_quality.drift import DriftAnalyser
 from ydata_quality.duplicates import DuplicateChecker
 from ydata_quality.labelling import LabelInspector
@@ -158,11 +158,13 @@ class DataQuality:
         self.__store_warnings() # fetch all warnings from the engines
         self.__clean_warnings()
         if not self._warnings:
-            print('No warnings found.')
+            print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')
         else:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
-            print('Warnings count by priority:')
-            print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print('List of warnings sorted by priority:')
-            print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
+            print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            warns = {level:[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)}
+            for level, warn_list in warns.items():
+                print(f'{WarningStyling.BOLD}Priority {level}:{WarningStyling.ENDC}')
+                print(*(f"\t{warn}" for warn in warn_list), sep='\n')

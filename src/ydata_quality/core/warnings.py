@@ -33,6 +33,19 @@ class Priority(OrderedEnum):
         return f"Priority {self.value}: {_descriptions[self.value]}"
 
 
+class WarningStyling:
+    PRIORITIES = {
+        0: u"\u001b[38;5;1m",
+        1: u"\u001b[38;5;209m",
+        2: u"\u001b[38;5;11m",
+        3: u"\u001b[38;5;193m"
+    }
+    OKAY = u"\u001b[38;5;2m"
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 class QualityWarning(BaseModel):
     """ Details for issues detected during data quality analysis.
 
@@ -53,7 +66,7 @@ class QualityWarning(BaseModel):
     # String Representation #
     #########################
     def __str__(self):
-        return f"[{self.test.upper()}] {self.description} ({str(self.priority)})"
+        return f"[{WarningStyling.BOLD}{self.category.upper()}{WarningStyling.ENDC} - {WarningStyling.UNDERLINE}{self.test.upper()}{WarningStyling.ENDC}] {self.description} {WarningStyling.PRIORITIES[self.priority.value]}({str(self.priority)}){WarningStyling.ENDC}"
 
     ########################
     # Comparison Operators #
