@@ -3,6 +3,7 @@ Utilities for feature correlations.
 """
 
 from typing import List, Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -86,7 +87,7 @@ def correlation_ratio(col1: np.ndarray, col2: np.ndarray) -> float:
     eta_2 = np.sum(np.multiply(counts,np.square(np.subtract(yx_hat,y_hat))))/np.sum(np.square(np.subtract(col2,y_hat)))
     return np.sqrt(eta_2)  # Note: this is strictly positive
 
-def correlation_matrix(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
+def correlation_matrix(df: pd.DataFrame, dtypes: dict, drop_dups: bool = False) -> pd.DataFrame:
     """Returns the correlation matrix.
     The methods used for computing correlations are mapped according to the column dtypes of each pair."""
     corr_funcs = {  # Map supported correlation functions
@@ -114,22 +115,25 @@ def correlation_matrix(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
             except:
                 corr = None  # Computation failed
             corr_mat.loc[col1,col2] = corr_mat.loc[col2,col1] = corr
+    if drop_dups:
+        dup_lists = find_duplicate_columns(corr_mat.abs(), True)  # Find duplicate row lists in absolute correlation matrix
+        for col, dup_list in dup_lists.items():
+            if col in corr_mat.columns: # Ensures we will not drop both members of duplicate pairs
+                corr_mat.drop(columns=dup_list, index=dup_list, inplace=True)
+                p_vals.drop(columns=dup_list, index=dup_list, inplace=True)
     return corr_mat, p_vals
 
 def partial_correlation_matrix(corr_matrix: pd.DataFrame) -> pd.DataFrame:
     """Returns the matrix of full order partial correlations.
     Uses the covariance matrix inversion method."""
-    no_dups_corr = corr_matrix.copy()
-    # Remove duplicate columns and rows from the correlation matrix, so it has full rank and can be inverted
-    dup_lists = find_duplicate_columns(no_dups_corr.abs(), True)  # Find duplicate row lists in absolute correlation matrix
-    for col, dup_list in dup_lists.items():
-        if col in no_dups_corr.columns: # Ensures we will not drop both members of duplicate pairs
-            no_dups_corr.drop(columns=dup_list, index=dup_list, inplace=True)
-    inv_corr_matrix = np.linalg.pinv(no_dups_corr)
-    scaled_diag = np.diag(np.sqrt(1 / np.diag(inv_corr_matrix)))
+    inv_corr_matrix = np.linalg.pinv(corr_matrix)
+    diag = np.diag(inv_corr_matrix)
+    if np.isnan(diag).any() or (diag<=0).any():
+        return None
+    scaled_diag = np.diag(np.sqrt(1 / diag))
     partial_corr_matrix = -1 * (scaled_diag @ inv_corr_matrix @ scaled_diag)
     np.fill_diagonal(partial_corr_matrix, 1)  # Fixing scaling setting the diagonal to -1
-    return pd.DataFrame(data=partial_corr_matrix, index=no_dups_corr.index, columns=no_dups_corr.columns)
+    return pd.DataFrame(data=partial_corr_matrix, index=corr_matrix.index, columns=corr_matrix.columns)
 
 def correlation_plotter(mat: pd.DataFrame, title: str='', symmetric: bool=True):
     """Plots correlation matrix heatmaps.
@@ -161,7 +165,9 @@ def vif_collinearity(data: pd.DataFrame, dtypes: dict, p_th: float, label: str=N
     if label and label in data.columns:
         data = data.drop(columns=label)
     num_columns = [col for col in data.columns if dtypes[col]=='numerical']
+    warnings.filterwarnings("ignore", category=RuntimeWarning)
     vifs = [vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))]
+    warnings.resetwarnings()
     return pd.Series(data=vifs, index=num_columns).sort_values(ascending=False)
 
 def chi2_collinearity(data: pd.DataFrame, dtypes: dict, p_th: float, label: str=None) -> pd.DataFrame:

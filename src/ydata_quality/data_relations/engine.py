@@ -67,17 +67,21 @@ class DataRelationsDetector(QualityEngine):
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
         df = standard_normalize(df, dtypes)
         results = {}
-        corr_mat, _ = correlation_matrix(df, self.dtypes)
+        corr_mat, _ = correlation_matrix(df, self.dtypes, True)
         p_corr_mat = partial_correlation_matrix(corr_mat)
-        results['Confounders'] = self._confounder_detection(corr_mat, p_corr_mat, corr_th)
-        results['Colliders'] = self._collider_detection(corr_mat, p_corr_mat, corr_th)
+        results['Correlations'] = {'Correlation matrix': corr_mat, 'Partial correlation matrix': p_corr_mat}
+        if plot:
+            correlation_plotter(corr_mat, title='Correlations', symmetric=True)
+        if p_corr_mat is not None:
+            if plot:
+                correlation_plotter(p_corr_mat, title='Partial Correlations', symmetric=True)
+            results['Confounders'] = self._confounder_detection(corr_mat, p_corr_mat, corr_th)
+            results['Colliders'] = self._collider_detection(corr_mat, p_corr_mat, corr_th)
+        else:
+            print('[DATA RELATIONS] The partial correlation matrix is not computable for this dataset. Skipping potential confounder and collider detection tests.')
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
-        if plot:
-            correlation_plotter(corr_mat, title='Correlations', symmetric=True)
-            correlation_plotter(p_corr_mat, title='Partial Correlations', symmetric=True)
-        results['Correlations'] = {'Correlation matrix': corr_mat, 'Partial correlation matrix': p_corr_mat}
         return results
 
     def _confounder_detection(self, corr_mat: pd.DataFrame, par_corr_mat: pd.DataFrame, corr_th: float) -> List[Tuple[str, str]]:
@@ -86,8 +90,6 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient above threshold and partial coefficient below threshold indicate existence of confounding effects."""
-        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
-        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         mask = np.ones(corr_mat.shape, dtype='bool')
         mask[np.tril(mask)] = False # Drop pairs below diagonal
         mask[corr_mat.abs()<=corr_th] = False # Drop pairs with zero order correlation below threshold
@@ -106,8 +108,6 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient below threshold and partial coefficient above threshold indicate existence of collider effects."""
-        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
-        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         mask = np.ones(corr_mat.shape, dtype='bool')
         mask[np.tril(mask)] = False # Drop pairs below diagonal
         mask[corr_mat.abs()>corr_th] = False # Drop pairs with zero order correlation above threshold
@@ -126,19 +126,20 @@ class DataRelationsDetector(QualityEngine):
 
         This method returns a summary of all detected important features.
         The summary contains zero, full order partial correlation and a note regarding potential confounding."""
-        drop_cols = list(set(corr_mat.columns).difference(set(par_corr_mat.columns)))
-        corr_mat.drop(index=drop_cols, columns=drop_cols, inplace=True)
         assert label in corr_mat.columns, "The provided label {} does not exist as a column in the DataFrame.".format(label)
         label_corrs = corr_mat.loc[label].drop(label)
-        label_pcorrs = par_corr_mat.loc[label].drop(label)
         mask = np.ones(label_corrs.shape, dtype='bool')
         mask[label_corrs.abs()<=corr_th] = False # Drop pairs with zero order correlation below threshold
         important_feats = [label_corrs.index[i][0] for i in np.argwhere(mask)]
         summary = "[FEATURE IMPORTANCE] No important features were found in explaining {}. You might want to try lowering corr_th.".format(label)
         if len(important_feats)>0:
-            summary = pd.DataFrame(data={'Correlations': label_corrs.loc[important_feats], 'Partial Correlations': label_pcorrs.loc[important_feats]})
-            summary['Note'] = 'OK'
-            summary.loc[summary['Partial Correlations'].abs()<corr_th, 'Note'] = 'Potential confounding detected'
+            if par_corr_mat is not None:
+                label_pcorrs = par_corr_mat.loc[label].drop(label)
+                summary = pd.DataFrame(data={'Correlations': label_corrs.loc[important_feats], 'Partial Correlations': label_pcorrs.loc[important_feats]})
+                summary['Note'] = 'OK'
+                summary.loc[summary['Partial Correlations'].abs()<corr_th, 'Note'] = 'Potential confounding detected'
+            else:
+                summary = pd.DataFrame(data={'Correlations': label_corrs.loc[important_feats]})
             summary.sort_values(by='Correlations', ascending=False, inplace=True, key=abs)
         return summary
 
