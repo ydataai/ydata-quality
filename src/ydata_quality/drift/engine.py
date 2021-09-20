@@ -1,7 +1,6 @@
 """
 Implementation of DriftAnalyser engine to run data drift analysis.
 """
-from _typeshed import NoneType
 from typing import Callable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -105,7 +104,7 @@ class DriftAnalyser(QualityEngine):
         self._sample = sample
 
     @property
-    def model(self) -> Union[ModelWrapper, bool, NoneType]:
+    def model(self) -> Optional[ModelWrapper]:
         """Returns a wrapper for the user's custom model in case the provided model was successfully tested.
         Returns False if a passed model failed the test.
         Returns None if no model was passed."""
@@ -121,7 +120,9 @@ class DriftAnalyser(QualityEngine):
             try:
                 self.__test_model()
             except:
-                self._model = False #TODO: RuntimeWarning here ('Provided model failed test')
+                self._model = None
+        else:
+            self._model = None #TODO: RuntimeWarning here ('Provided model failed test')
 
     def __test_model(self):
         """Tests the provided model wrapper.
