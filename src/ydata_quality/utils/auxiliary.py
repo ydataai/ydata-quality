@@ -3,10 +3,11 @@ Auxiliary utility methods, IO, processing, etc.
 """
 
 from typing import Union, Tuple
-
 import json
 
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 def test_load_json_path(json_path: str) -> dict:
     """Tests file existence from given path and attempts to parse as a json dictionary.
@@ -40,3 +41,38 @@ def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float, shuffle:
     split = sample.iloc[:split_len]
     remainder = sample.iloc[split_len:]
     return split, remainder
+
+def min_max_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
+    """Applies min-max normalization to the numerical features of the dataframe.
+
+    Args:
+        df (pd.DataFrame): DataFrame to be normalized
+        dtypes (dict): Map of column names to variable types"""
+    numeric_features = [col for col in df.columns if dtypes[col]=='numerical']
+    scaled_data = MinMaxScaler().fit_transform(df[numeric_features].values)
+    df[numeric_features] = scaled_data
+    return df
+
+def standard_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
+    """Applies standard normalization (z-score) to the numerical features of the dataframe.
+
+    Args:
+        df (pd.DataFrame): DataFrame to be normalized
+        dtypes (dict): Map of column names to variable types"""
+    numeric_features = [col for col in df.columns if dtypes[col]=='numerical']
+    scaled_data = StandardScaler().fit_transform(df[numeric_features].values)
+    df[numeric_features] = scaled_data
+    return df
+
+def find_duplicate_columns(df: pd.DataFrame, is_close=False) -> dict:
+    """Returns a mapping dictionary of columns with fully duplicated feature values.
+
+    Arguments:
+        is_close(bool): Pass True to use numpy.isclose instead of pandas.equals."""
+    dups = {}
+    for idx, col in enumerate(df.columns): # Iterate through all the columns of dataframe
+        ref = df[col]                      # Take the column values as reference.
+        for tgt_col in df.columns[idx+1:]: # Iterate through all other columns
+            if np.isclose(ref,df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]): # Take target values
+                dups.setdefault(col, []).append(tgt_col)  # Store if they match
+    return dups

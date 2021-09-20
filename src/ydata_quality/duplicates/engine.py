@@ -7,15 +7,17 @@ from typing import List, Optional, Union
 import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
+from ydata_quality.utils.auxiliary import find_duplicate_columns
 
 
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = []):
+    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False):
         super().__init__(df=df)
         self._entities = entities
         self._tests = ["exact_duplicates", "entity_duplicates", "duplicate_columns"]
+        self._is_close = is_close
 
     @property
     def entities(self):
@@ -97,21 +99,15 @@ class DuplicateChecker(QualityEngine):
                     ent_dups.update(self.entity_duplicates(col))
         return ent_dups
 
-
     def duplicate_columns(self):
         "Returns a mapping dictionary of columns with fully duplicated feature values."
-        dups = {}
-        for idx, col in enumerate(self.df.columns): # Iterate through all the columns of dataframe
-            ref = self.df[col]                      # Take the column values as reference.
-            for tgt_col in self.df.columns[idx+1:]: # Iterate through all other columns
-                if ref.equals(self.df[tgt_col]):    # Take target values
-                    dups[col] = tgt_col  # Store if they match
-
-        if len(dups) > 0:
+        dups = find_duplicate_columns(self.df, self._is_close)
+        cols_with_dups = len(dups.keys())
+        if cols_with_dups > 0:
             self.store_warning(
                 QualityWarning(
                     test='Duplicate Columns', category='Duplicates', priority=1, data=dups,
-                    description=f"Found {len(dups)} columns with exactly the same feature values as other columns."
+                    description=f"Found {cols_with_dups} columns with exactly the same feature values as other columns."
                 )
             )
         else:

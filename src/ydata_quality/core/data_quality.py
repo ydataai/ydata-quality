@@ -14,6 +14,7 @@ from ydata_quality.missings import MissingsProfiler
 from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
+from ydata_quality.data_relations import DataRelationsDetector
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -23,6 +24,7 @@ class DataQuality:
                     label: str = None,
                     random_state: Optional[int]  = None,
                     entities: List[Union[str, List[str]]] = [],
+                    is_close: bool= False,
                     ed_extensions: Optional[list]=[],
                     sample: Optional[pd.DataFrame] = None,
                     model: Callable = None,
@@ -30,7 +32,12 @@ class DataQuality:
                     error_tol: int = 0,
                     rel_error_tol: Optional[float] = None,
                     minimum_coverage: Optional[float] = 0.75,
-                    sensitive_features: List[str] = []
+                    sensitive_features: List[str] = [],
+                    dtypes: Optional[dict] = {},
+                    corr_th: float = 0.8,
+                    vif_th: float = 5,
+                    p_th: float = 0.05,
+                    plot: bool = True
                     ):
         """
         Engines:
@@ -41,6 +48,7 @@ class DataQuality:
         - Drift Analysis
         - Data Expectations
         - Bias & Fairness
+        - Data Relations
 
         Args:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
@@ -49,6 +57,7 @@ class DataQuality:
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behaviour, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
+            is_close: [DUPLICATES] Pass True to use numpy.isclose instead of pandas.equals in column comparison.
             ed_extensions: [ERRONEOUS DATA] A list of user provided erroneous data values to append to defaults.
             sample: [DRIFT ANALYSIS] data against which drift is tested.
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
@@ -57,24 +66,30 @@ class DataQuality:
             rel_error_tol (float): [EXPECTATIONS] Defines the maximum fraction of failed expectations, overrides error_tol.
             minimum_coverage (float): [EXPECTATIONS] Minimum expected fraction of DataFrame columns covered by the expectation suite.
             sensitive_features (List[str]): [BIAS & FAIRNESS] features deemed as sensitive attributes
+            dtypes (Optional[dict]): Maps names of the columns of the dataframe to supported dtypes. Columns not specified are automatically inferred.
+            corr_th (float): [DATA RELATIONS] Absolute threshold for high correlation detection. Defaults to 0.8.
+            vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
+            p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
+            plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
         """
         #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
         self._random_state = random_state
         self._engines_legacy = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities),
+            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close),
             'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
             'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
             'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
 
-        self._engines_new = {}
+        self._engines_new = {'data-relations': DataRelationsDetector()}
         self._eval_args = { # Argument lists for different engines
         # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
         # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
         # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args) for name, engine in self.engines.items()}
-            'expectations': [results_json_path, df, error_tol, rel_error_tol, minimum_coverage]
+            'expectations': [results_json_path, df, error_tol, rel_error_tol, minimum_coverage],
+            'data-relations': [df, dtypes, label, corr_th,  vif_th, p_th, plot]
         }
 
         # Engines based on mandatory arguments
