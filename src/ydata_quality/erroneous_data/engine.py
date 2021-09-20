@@ -7,6 +7,7 @@ from typing import Optional
 import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
+from ydata_quality.utils.enum import DataFrameType
 
 
 class ErroneousDataIdentifier(QualityEngine):
@@ -19,7 +20,10 @@ class ErroneousDataIdentifier(QualityEngine):
             ed_extensions: A list of user provided erroneous data values to append to defaults.
         """
         super().__init__(df=df)
-        self._tests = ["flatlines", "predefined_erroneous_data"]
+        if self.df_type == DataFrameType.TIMESERIES:
+            self._tests = ["flatlines", "predefined_erroneous_data"]
+        else:
+            self._tests = ["predefined_erroneous_data"]
         self._default_ed = None
         self._flatline_index = {}
         self.__default_index_name = '__index'
@@ -78,10 +82,13 @@ class ErroneousDataIdentifier(QualityEngine):
             th: Defines the minimum length required for a flatline event to be reported.
             skip: List of columns that will not be target of search for flatlines.
                 Pass '__index' inside skip list to skip looking for flatlines at the index."""
+        if self.df_type == DataFrameType.TABULAR:
+            print('[FLATLINES] The provided DataFrame is not a valid Timeseries type, skipping this test.')
+            return None
         flatlines = {}
         for column in self.df.columns:  # Compile flatline index
-            if column in skip:
-                continue  # Column not requested
+            if column in skip or self.dtypes[column] == 'categorical':
+                continue  # Column not requested or is categorical
             flts = self.__get_flatline_index(column, th)
             if len(flts) > 0:
                 flatlines[column] = flts

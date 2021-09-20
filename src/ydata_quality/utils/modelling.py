@@ -118,8 +118,6 @@ def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable)
 
     return (real_perf - base_perf) / (best_perf - base_perf)
 
-
-
 @ignore_warnings(category=DataConversionWarning)
 def performance_per_feature_values(df: pd.DataFrame, feature: str, target: str, task='classification'):
     """Performance achieved per each value of a groupby feature."""
@@ -188,31 +186,6 @@ def predict_missingness(df: pd.DataFrame, feature: str):
 
     # 5. Return the area under the roc curve
     return roc_auc_score(y_test, y_pred)
-
-def infer_dtypes(df: Union[pd.DataFrame, pd.Series], skip: Union[list, set] = []):
-    """Simple inference method to return a dictionary with list of numeric_features and categorical_features
-    Note: The objective is not to substitute the need for passed dtypes but rather to provide expedite inferal between
-    numerical or categorical features"""
-    infer = pd.api.types.infer_dtype
-    dtypes = {}
-    as_categorical = ['string',
-        'bytes',
-        'mixed-integer',
-        'mixed-integer-float',
-        'categorical',
-        'boolean',
-        'mixed']
-    if isinstance(df, pd.DataFrame):
-        for column in df.columns:
-            if column in skip:
-                continue
-            if infer(df[column]) in as_categorical:
-                dtypes[column] = 'categorical'
-            else:
-                dtypes[column] = 'numerical'
-    elif isinstance(df, pd.Series):
-        dtypes[df.name] = 'categorical' if infer(df) in as_categorical else 'numerical'
-    return dtypes
 
 def standard_transform(df, dtypes, skip=[], robust = False):
     """Applies standard transformation to the dataset (imputation, centering and scaling), returns transformed data and the fitted transformer.

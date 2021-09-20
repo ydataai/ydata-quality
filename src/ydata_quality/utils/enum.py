@@ -9,6 +9,11 @@ class PredictionTask(Enum):
     CLASSIFICATION = 'classification'
     REGRESSION = 'regression'
 
+class DataFrameType(Enum):
+    "Enum of supported dataset types."
+    TABULAR = 'tabular'
+    TIMESERIES = 'timeseries'
+
 class OrderedEnum(Enum):
     "Enum with support for ordering."
     def __ge__(self, other):

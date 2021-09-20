@@ -9,7 +9,8 @@ import pandas as pd
 from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning
-from ydata_quality.utils.modelling import infer_dtypes
+from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
+from ydata_quality.utils.enum import DataFrameType
 
 
 class QualityEngine(ABC):
@@ -17,6 +18,7 @@ class QualityEngine(ABC):
 
     def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None):
         self._df = df
+        self._df_type = None
         self._warnings = list()
         self._tests = []
         self._label = label
@@ -63,6 +65,13 @@ broad dtype list: {}.".format(supported_dtypes)
             for col, dtype in _dtypes.items():
                 dtypes[col] = dtype
         self._dtypes = dtypes
+
+    @property
+    def df_type(self):
+        "Infered type for the dataset."
+        if self._df_type is None:
+            self._df_type = infer_df_type(self.df)
+        return self._df_type
 
     @property
     def random_state(self):

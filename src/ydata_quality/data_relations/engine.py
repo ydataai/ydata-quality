@@ -8,8 +8,7 @@ import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.correlations import correlation_matrix, partial_correlation_matrix, correlation_plotter, vif_collinearity, chi2_collinearity
-from ydata_quality.utils.modelling import infer_dtypes
-from ydata_quality.utils.auxiliary import standard_normalize
+from ydata_quality.utils.auxiliary import infer_dtypes, standard_normalize
 
 class DataRelationsDetector(QualityEngine):
     """Main class to run data relations analysis.

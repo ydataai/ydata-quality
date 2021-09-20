@@ -9,6 +9,8 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
+from ydata_quality.utils.enum import DataFrameType
+
 def test_load_json_path(json_path: str) -> dict:
     """Tests file existence from given path and attempts to parse as a json dictionary.
 
@@ -76,3 +78,40 @@ def find_duplicate_columns(df: pd.DataFrame, is_close=False) -> dict:
             if np.isclose(ref,df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]): # Take target values
                 dups.setdefault(col, []).append(tgt_col)  # Store if they match
     return dups
+
+def infer_dtypes(df: Union[pd.DataFrame, pd.Series], skip: Union[list, set] = []):
+    """Simple inference method to return a dictionary with list of numeric_features and categorical_features
+    Note: The objective is not to substitute the need for passed dtypes but rather to provide expedite inferal between
+    numerical or categorical features"""
+    infer = pd.api.types.infer_dtype
+    dtypes = {}
+    as_categorical = ['string',
+        'bytes',
+        'mixed-integer',
+        'mixed-integer-float',
+        'categorical',
+        'boolean',
+        'mixed']
+    if isinstance(df, pd.DataFrame):
+        for column in df.columns:
+            if column in skip:
+                continue
+            if infer(df[column]) in as_categorical:
+                dtypes[column] = 'categorical'
+            else:
+                dtypes[column] = 'numerical'
+    elif isinstance(df, pd.Series):
+        dtypes[df.name] = 'categorical' if infer(df) in as_categorical else 'numerical'
+    return dtypes
+
+def check_time_index(index: pd.Index) -> bool:
+    """Tries to infer from passed index column if the dataframe is a timeseries or not."""
+    if isinstance(index, (pd.DatetimeIndex, pd.PeriodIndex, pd.TimedeltaIndex)):
+        return True
+    return False
+
+def infer_df_type(df: pd.DataFrame) -> DataFrameType:
+    """Simple inference method to dataset type."""
+    if check_time_index(df.index):
+        return DataFrameType.TIMESERIES
+    return DataFrameType.TABULAR
