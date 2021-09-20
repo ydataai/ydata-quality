@@ -20,7 +20,7 @@ from ydata_quality import DataQuality
 import pandas as pd
 
 #Load in the data
-df = pd.read_csv(f'../datasets/transformed/census_10k.csv')
+df = pd.read_csv('./datasets/transformed/census_10k.csv')
 
 # create a DataQuality object from the main class that holds all quality modules
 dq = DataQuality(df=df)
@@ -63,6 +63,8 @@ We are open to collaboration! If you want to start contributing you only need to
 1. Search for an issue in which you would like to work. Issues for newcomers are labeled with good first issue.
 2. Create a PR solving the issue.
 3. We would review every PRs and either accept or ask for revisions.
+
+You can also join the discussions on the #data-quality channel on our [Slack](http://slack.ydata.ai) and request features/bug fixes by opening issues on our repository.
 
 # Support
 For support in using this library, please join the #help Slack channel. The Slack community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Slack community!](http://slack.ydata.ai/)
