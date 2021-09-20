@@ -1,7 +1,8 @@
 """
 Implementation of DriftAnalyser engine to run data drift analysis.
 """
-from typing import Callable, Optional, Tuple
+from _typeshed import NoneType
+from typing import Callable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -69,7 +70,7 @@ class DriftAnalyser(QualityEngine):
     """
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, model: Callable = None, holdout: float = 0.2,
+        label: Optional[str] = None, model: Optional[Union[Callable, ModelWrapper]] = None, holdout: float = 0.2,
         random_state: Optional[int] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
@@ -79,16 +80,15 @@ class DriftAnalyser(QualityEngine):
             sample (Optional, pd.DataFrame): Sample to test drift against the reference sample, can be new data,
                  a slice of the train dataset or a test sample.
             label (Optional, str): Defines a feature in the provided samples as label.
-            model (Optional, ModelWrapper): A custom model wrapped by the ModelWrapper class. The model is expected
-                 to perform label prediction over the set of features (covariates) of the provided samples.
+            model (Optional, Union[Callable, ModelWrapper]): A custom model or an overridden version of the ModelWrapper class (do this to define custom pre/post process methods).
+                The model is expected to perform label prediction over the set of features (covariates) of the provided samples.
             holdout (float): Fraction to be kept as holdout for drift test.
             random_state (Optional, int): Seed used to guarantee reproducibility of the random sample splits.
                 Pass None for no reproducibility.
         """
         super().__init__(df=ref, label=label, random_state=random_state)
         self.sample = sample
-        self._model = model
-        self.has_model = None
+        self.model = model
         self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self.random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
@@ -105,34 +105,38 @@ class DriftAnalyser(QualityEngine):
         self._sample = sample
 
     @property
-    def has_model(self) -> bool:
-        """Returns a boolean flag informing if the engine has a model wrapper set up."""
-        return self._has_model
+    def model(self) -> Union[ModelWrapper, bool, NoneType]:
+        """Returns a wrapper for the user's custom model in case the provided model was successfully tested.
+        Returns False if a passed model failed the test.
+        Returns None if no model was passed."""
+        return self._model
 
-    @has_model.setter
-    def has_model(self, _):
-        try:
-            self._has_model = self.__test_model()
-        except AssertionError:
-            print("The provided model failed to produce output in the expected format during test and will not be used by the engine.")
-            self._has_model = False
-        except:
-            self._has_model = False
+    @model.setter
+    def model(self, model: Callable):
+        if model:
+            if isinstance(model, ModelWrapper):
+                self._model = model
+            else:
+                self._model = ModelWrapper(model)
+            try:
+                self.__test_model()
+            except:
+                self._model = False #TODO: RuntimeWarning here ('Provided model failed test')
 
-    def __test_model(self) -> bool:
+    def __test_model(self):
         """Tests the provided model wrapper.
         Creates an example input from the provided samples.
         A valid test output is a label series with the same number of rows as x.
         Raises AssertionError if the model test fails.
         Raises a general exception if the conditions for test were not met."""
-        if self.label and self._model is not None:
+        if self.label:
             test_x = self.df.head().copy()
             test_x.drop(self.label, axis=1, inplace=True)
-            output = self._model(test_x)
+            output = self.model(test_x)
             assert isinstance(output, (pd.Series, np.ndarray)), "The provided model failed to produce the expected output."
             assert len(output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
-            return True
-        raise Exception
+        else:
+            raise Exception
 
     @staticmethod
     def _chisq_2samp(reference_data: pd.Series, test_data: pd.Series) -> Tuple[float]:
@@ -318,14 +322,14 @@ class DriftAnalyser(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test.
         """
-        if not self.has_model or self.sample is None:
+        if not self.model or self.sample is None:
             return "[CONCEPT DRIFT] To run concept drift, a valid model, a test sample and label column must be provided. Test skipped."
         ref_sample = self.df.copy()
         test_sample = self.sample.copy()
         ref_sample.drop(self.label, axis=1, inplace=True)
         test_sample.drop(self.label, axis=1, inplace=True)
-        ref_preds = pd.Series(self._model(ref_sample), name=self.label)
-        test_preds = pd.Series(self._model(test_sample), name=self.label)
+        ref_preds = pd.Series(self.model(ref_sample), name=self.label)
+        test_preds = pd.Series(self.model(test_sample), name=self.label)
         stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample = ref_preds,
             test_sample = test_preds)
         test_summary = pd.Series(data=[test_name, stat_val, p_val, None],
