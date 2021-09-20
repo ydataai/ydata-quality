@@ -6,8 +6,9 @@ from typing import Union, Optional
 import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
+from ydata_quality.utils.auxiliary import infer_dtypes
 from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
-                                           estimate_sd, infer_dtypes,
+                                           estimate_sd,
                                            normality_test,
                                            performance_one_vs_rest,
                                            standard_transform)
@@ -39,12 +40,6 @@ class SharedLabelInspector(QualityEngine):
     @staticmethod
     def __get_missing_labels(df: pd.DataFrame, label: str):
         return df[df[label].isna()]
-
-    def _get_data_types(self):
-        """Makes a guesstimate for the column types.
-        Used to control the distance metrics and preprocessing pipelines"""
-        dtypes = infer_dtypes(self.df)
-        return dtypes
 
     def _transform_df(self):
         """Selects all observations with a label feature and applies preprocessing transformations.
