@@ -69,7 +69,7 @@ class DriftAnalyser(QualityEngine):
     """
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, model: Union[Callable, ModelWrapper] = None, holdout: float = 0.2,
+        label: Optional[str] = None, model: Optional[Union[Callable, ModelWrapper]] = None, holdout: float = 0.2,
         random_state: Optional[int] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
@@ -87,8 +87,7 @@ class DriftAnalyser(QualityEngine):
         """
         super().__init__(df=ref, label=label, random_state=random_state)
         self.sample = sample
-        self._model = model
-        self.has_model = None
+        self.model = model
         self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self.random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
             'sample_label_drift', 'sample_concept_drift']
@@ -105,33 +104,23 @@ class DriftAnalyser(QualityEngine):
         self._sample = sample
 
     @property
-    def has_model(self) -> bool:
-        """Returns a boolean flag informing if the engine has a model wrapper set up."""
-        return self._has_model
-
-    @has_model.setter
-    def has_model(self, _):
-        if self._model:
-            self.model = self._model  # Set the model
-            try:
-                self._has_model = self.__test_model()
-            except:
-                print("The provided model is not supported or failed to produce output in the expected format during test and will not be used by the engine.")
-                self._has_model = False
-
-    @property
     def model(self) -> ModelWrapper:
         """Returns a wrapper for the user's custom model."""
         return self._model
 
     @model.setter
     def model(self, model: Callable):
-        if isinstance(model, ModelWrapper):
-            self._model = model
-        else:
-            self._model = ModelWrapper(model)
+        if model:
+            if isinstance(model, ModelWrapper):
+                self._model = model
+            else:
+                self._model = ModelWrapper(model)
+            try:
+                self.__test_model()
+            except:
+                self._model = False #TODO: RuntimeWarning here ('Provided model failed test')
 
-    def __test_model(self) -> bool:
+    def __test_model(self):
         """Tests the provided model wrapper.
         Creates an example input from the provided samples.
         A valid test output is a label series with the same number of rows as x.
@@ -143,8 +132,8 @@ class DriftAnalyser(QualityEngine):
             output = self.model(test_x)
             assert isinstance(output, (pd.Series, np.ndarray)), "The provided model failed to produce the expected output."
             assert len(output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
-            return True
-        raise Exception
+        else:
+            raise Exception
 
     @staticmethod
     def _chisq_2samp(reference_data: pd.Series, test_data: pd.Series) -> Tuple[float]:
@@ -330,7 +319,7 @@ class DriftAnalyser(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test.
         """
-        if not self.has_model or self.sample is None:
+        if not self.model or self.sample is None:
             return "[CONCEPT DRIFT] To run concept drift, a valid model, a test sample and label column must be provided. Test skipped."
         ref_sample = self.df.copy()
         test_sample = self.sample.copy()
