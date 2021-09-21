@@ -15,6 +15,7 @@ from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
 from ydata_quality.data_relations import DataRelationsDetector
+from ydata_quality.utils.logger import *
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -55,7 +56,7 @@ class DataQuality:
             label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
-                Set to None for fully random behaviour, no reproducibility.
+                Set to None for fully random behavior, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             is_close: [DUPLICATES] Pass True to use numpy.isclose instead of pandas.equals in column comparison.
             ed_extensions: [ERRONEOUS DATA] A list of user provided erroneous data values to append to defaults.
@@ -75,10 +76,12 @@ class DataQuality:
         #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
+        self._logger = create_logger(NAME, STREAM, LOG_LEVEL)
         self._random_state = random_state
+
         self._engines_legacy = { # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close),
-            'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
+            'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state),
             'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
             'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
         }
@@ -96,16 +99,16 @@ class DataQuality:
         if label is not None:
             self._engines_legacy['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
         else:
-            print('Label is not defined. Skipping LABELLING engine.')
+            self._logger.warning('Label is not defined. Skipping LABELLING engine.')
         if len(sensitive_features)>0:
             self._engines_legacy['bias&fairness'] = BiasFairness(df=df, sensitive_features=sensitive_features,
                                                                  label=label, random_state=self.random_state)
         else:
-            print('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
+            self._logger.warning('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
         if results_json_path is not None:
             self._engines_new['expectations'] = DataExpectationsReporter()
         else:
-            print('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
+            self._logger.warning('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
 
 
     def __clean_warnings(self):
@@ -140,7 +143,7 @@ class DataQuality:
         if new_state==None or (isinstance(new_state, int) and new_state>=0):
             self._random_state = new_state
         else:
-            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
+            self._logger.warning('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
             self._random_state = None
 
     def __store_warnings(self):
@@ -158,7 +161,7 @@ class DataQuality:
         self.__store_warnings() # fetch all warnings from the engines
         self.__clean_warnings()
         if not self._warnings:
-            print('No warnings found.')
+            self._logger.info('No warnings found.')
         else:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
             print('Warnings count by priority:')
