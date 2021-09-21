@@ -83,7 +83,7 @@ class ErroneousDataIdentifier(QualityEngine):
             skip: List of columns that will not be target of search for flatlines.
                 Pass '__index' inside skip list to skip looking for flatlines at the index."""
         if self.df_type == DataFrameType.TABULAR:
-            print('[FLATLINES] The provided DataFrame is not a valid Timeseries type, skipping this test.')
+            self._logger.info('The provided DataFrame is not a valid Timeseries type, skipping this test.')
             return None
         flatlines = {}
         for column in self.df.columns:  # Compile flatline index
@@ -101,7 +101,7 @@ class ErroneousDataIdentifier(QualityEngine):
             ))
             return flatlines
         else:
-            print("[FLATLINES] No flatline events with a minimum length of {} were found.".format(th))
+            self._logger.info("No flatline events with a minimum length of %f were found.", th)
 
     def predefined_erroneous_data(self, skip: list=[], short: bool = True):
         """Runs a check against a list of predefined erroneous data values.
@@ -127,9 +127,7 @@ class ErroneousDataIdentifier(QualityEngine):
             eds.drop(no_ed_cols, axis=1, inplace=True)
             eds.drop(no_ed_rows, inplace=True)
         if eds.empty:
-            print("[PREDEFINED ERRONEOUS DATA] No predefined ED values from  the set {} were found in the dataset.".format(
-                self.err_data
-            ))
+            self._logger.info("No predefined ED values from  the set %s were found in the dataset.", self.err_data)
         else:
             total_eds = eds.sum().sum()
             self.store_warning(

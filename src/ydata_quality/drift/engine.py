@@ -223,7 +223,7 @@ class DriftAnalyser(QualityEngine):
         Args:
             p_thresh (float): The p_threshold used for the test."""
         if self.label is None:
-            print("[REFERENCE LABEL DRIFT] No label was provided. Test skipped.")
+            self._logger.warning("No label was provided. Test skipped.")
             return
         labels = self._remaining_data[self.label].copy()
         holdout = self._holdout[self.label]
@@ -280,7 +280,7 @@ class DriftAnalyser(QualityEngine):
                     description=f"""There were {n_invalid_tests} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
             ))
         else:
-            print("[SAMPLE COVARIATE DRIFT] Covariate drift was not detected in the test sample.")
+            self._logger.info("Covariate drift was not detected in the test sample.")
         return test_summary
 
     def sample_label_drift(self, p_thresh: float= 0.05) -> pd.Series:
@@ -312,7 +312,7 @@ class DriftAnalyser(QualityEngine):
                     description="The test was invalid. This is likely due to a small test sample size."
             ))
         else:
-            print("[SAMPLE LABEL DRIFT] Label drift was not detected in the test sample.")
+            self._logger.info("Label drift was not detected in the test sample.")
         return test_summary
 
     def sample_concept_drift(self, p_thresh: float= 0.05) -> pd.Series:
@@ -349,5 +349,5 @@ class DriftAnalyser(QualityEngine):
                     description="The test was invalid. This is likely due to a small test sample size."
             ))
         else:
-            print("[CONCEPT DRIFT] Concept drift was not detected between the reference and the test samples.")
+            self._logger.info("Concept drift was not detected between the reference and the test samples.")
         return test_summary

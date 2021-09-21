@@ -61,7 +61,7 @@ class SharedLabelInspector(QualityEngine):
                     description=f"Found {len(missing_labels)} instances with missing labels."
             ))
         else:
-            print("[MISSING LABELS] No missing labels were found.")
+            self._logger.info("No missing labels were found.")
             missing_labels = None
         return missing_labels
 
@@ -112,7 +112,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
                     "Found {} labels with {} or less records.".format(len(few_labels), count_th)
             ))
         else:
-            print("[FEW LABELS] No labels with {} or less records were found.".format(count_th))
+            self._logger.info("No labels with %d or less records were found.", count_th)
             few_labels = None
         return few_labels
 
@@ -149,7 +149,7 @@ Classes {} are over-represented each having more than {:.1%} of total instances"
     set(data['Over-represented'].keys()), fair_share+adj_slack)
     ))
         else:
-            print("[UNBALANCED CLASSES] No unbalanced classes were found.")
+            self._logger.info("No unbalanced classes were found.")
             return None
         return label_excess.index
 
@@ -299,9 +299,9 @@ define the potential outliers.".format(total_outliers, coverage_string, th)
         test_result, transform, pstat = normality_test(vals, p_th=p_th)
         if test_result:
             if transform is None:
-                print("[TEST NORMALITY] The label values appears to be normally distributed.")
+                self._logger.info("The label values appears to be normally distributed.")
             else:
-                print("[TEST NORMALITY] The {} transform appears to be able to normalize the label values.".format(transform))
+                self._logger.info("The %s transform appears to be able to normalize the label values.", transform)
                 self.store_warning(
                     QualityWarning(
                         test='Test normality', category='Labels', priority=2, data=vals,
@@ -310,7 +310,7 @@ Using the {} transform provided a positive normality test with a p-value statist
     transform, pstat)
                 ))
         else:
-            print("[TEST NORMALITY] It was not possible to normalize the label values. See the warning message for additional context.")
+            self._logger.warning("It was not possible to normalize the label values. See the data quality warning message for additional context.")
             self.store_warning(
                 QualityWarning(
                     test='Test normality', category='Labels', priority=1, data=vals,

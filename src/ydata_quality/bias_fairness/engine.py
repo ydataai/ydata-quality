@@ -93,8 +93,7 @@ class BiasFairness(QualityEngine):
         """
         # TODO: support error rate parity metrics (e.g. false positive rate, positive rate)
         if self.label is None:
-            print('[BIAS&FAIRNESS] Argument "label" must be defined to calculate performance discrimination metric. Skipping test.')
-            pass
+            self._logger.warning('Argument "label" must be defined to calculate performance discrimination metric. Skipping test.')
 
         res = {}
         for feat in self.sensitive_features:

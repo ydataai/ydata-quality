@@ -183,10 +183,10 @@ failed expectations.".format(
                 results['Coverage Fraction'] = self._coverage_fraction(
                     results_json_path, df, minimum_coverage=minimum_coverage)
             except AssertionError as exc: # print a Warning and log the message
-                print("['DATA EXPECTATIONS'] Canceled Data Expectations engine execution due to dataset-expectation suite mismatch.")
+                self._logger.critical("Canceled Data Expectations engine execution due to dataset-expectation suite mismatch.")
                 return "[ERROR] Canceled computation. Original exception: "+f"{exc}"
         else:
-            print("A valid DataFrame was not passed, skipping coverage fraction test.")
+            self._logger.error("A valid DataFrame was not passed, skipping coverage fraction test.")
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
         return results
