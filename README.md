@@ -31,7 +31,7 @@ results = dq.evaluate()
 # Output a report of the quality issues found by the engines
 dq.report() 
 ```
-```python
+```
 Warnings count by priority:
 	Priority 1: 1 warning(s)
 	Priority 2: 3 warning(s)
