@@ -1,6 +1,7 @@
-PYTHON = python
-PIP = pip
-version := next
+VENV := $(PWD)/.venv
+PYTHON = $(VENV)/bin/python
+PIP := $(PYTHON) -m pip
+version := v0.1-alpha
 
 .PHONY: help lint test package clean install
 
@@ -12,6 +13,14 @@ else
 	@awk -F ':.*###' '$$0 ~ FS {printf "%15s%s\n", $$1 ":", $$2}' \
 		$(MAKEFILE_LIST) | grep -v '@awk' | sort
 endif
+
+clean-env: ### Removes environment directory
+	rm -rf $(VENV)
+
+env: ### Create a virtual environment
+	test -d $(VENV) || python -m venv $(VENV)
+	$(PIP) install -r requirements.txt
+	$(PIP) install -r requirements-dev.txt
 
 lint: ### Validates project with linting rules
 	$(PIP) install pylint
@@ -31,3 +40,6 @@ clean: ### Removes build binaries
 
 install: ### Installs required dependencies
 	$(PIP) install dist/ydata-quality-$(version).tar.gz
+
+upload:
+	$(PYTHON) -m twine upload dist/*
