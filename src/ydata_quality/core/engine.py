@@ -120,7 +120,7 @@ broad dtype list: {}.".format(supported_dtypes)
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
             print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES_F[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
             print('\n')
             warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
             for warn_list in warns:

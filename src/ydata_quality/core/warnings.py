@@ -49,7 +49,7 @@ class Priority(OrderedEnum):
             2: 'usage allowed, limited human intelligibility',
             3: 'minor impact, aesthetic'
             }
-        return f"{WarningStyling.PRIORITIES_F[self.value]}{WarningStyling.BOLD}Priority {self.value}{WarningStyling.ENDC} - {WarningStyling.BOLD}{_descriptions[self.value]}{WarningStyling.ENDC}:"
+        return f"{WarningStyling.PRIORITIES[self.value]}{WarningStyling.BOLD}Priority {self.value}{WarningStyling.ENDC} - {WarningStyling.BOLD}{_descriptions[self.value]}{WarningStyling.ENDC}:"
 
 
 class QualityWarning(BaseModel):
