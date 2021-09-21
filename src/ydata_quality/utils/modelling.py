@@ -21,6 +21,7 @@ from sklearn.preprocessing import (FunctionTransformer, OneHotEncoder,
 from sklearn.utils._testing import ignore_warnings
 
 from ydata_quality.utils.enum import PredictionTask
+from ydata_quality.utils.auxiliary import infer_dtypes
 
 BASELINE_CLASSIFIER = Pipeline([
     ('imputer', SimpleImputer()),
@@ -51,17 +52,17 @@ def get_prediction_task(df: pd.DataFrame, label: str):
         return 'regression'
 
 @ignore_warnings(category=ConvergenceWarning)
-def baseline_predictions(df: pd.DataFrame, target: str, task='classification'):
+def baseline_predictions(df: pd.DataFrame, label: str, task='classification'):
     "Train a baseline model and predict for a test set"
 
     # 0. Infer the prediction task
-    task = get_prediction_task(df=df, label=target)
+    task = get_prediction_task(df=df, label=label)
 
     # 1. Define the baseline model
     model = BASELINE_CLASSIFIER if task == 'classification' else BASELINE_REGRESSION
 
     # 2. Train overall model
-    X, y = df.drop(target, axis=1), label_binarize(df[target], classes=list(set(df[target])))
+    X, y = df.drop(label, axis=1), label_binarize(df[label], classes=list(set(df[label])))
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     model.fit(X_train.select_dtypes('number'), y_train)
 
@@ -75,26 +76,26 @@ def baseline_predictions(df: pd.DataFrame, target: str, task='classification'):
     return y_pred, X_test, y_test
 
 @ignore_warnings(category=DataConversionWarning)
-def baseline_performance(df: pd.DataFrame, target: str,
+def baseline_performance(df: pd.DataFrame, label: str,
                         task: PredictionTask = PredictionTask.CLASSIFICATION,
                         adjusted_metric: bool = False):
     """Train a baseline model, predict for a test set and return the performance.
 
     Args:
         - df (pd.DataFrame): original dataset
-        - target (str): name of target feature column
+        - label (str): name of target feature column
         - task (PredictionTask): classification, regression
         - adjusted_metric (bool): if True, return metric as percentage of max achievable performance
     """
 
     # 0. Infer the prediction task
-    task = get_prediction_task(df=df, label=target)
+    task = get_prediction_task(df=df, label=label)
 
     # 1. Define the baseline performance metric
     metric = roc_auc_score if task == 'classification' else mean_squared_error
 
     # 2. Get the baseline predictions
-    y_pred, _, y_test = baseline_predictions(df=df, target=target, task=task)
+    y_pred, _, y_test = baseline_predictions(df=df, label=label, task=task)
 
     # 3. Get the performance
     if adjusted_metric:
@@ -119,17 +120,17 @@ def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable)
     return (real_perf - base_perf) / (best_perf - base_perf)
 
 @ignore_warnings(category=DataConversionWarning)
-def performance_per_feature_values(df: pd.DataFrame, feature: str, target: str, task='classification'):
+def performance_per_feature_values(df: pd.DataFrame, feature: str, label: str, task='classification'):
     """Performance achieved per each value of a groupby feature."""
 
     # 0. Infer the prediction task
-    task = get_prediction_task(df=df, label=target)
+    task = get_prediction_task(df=df, label=label)
 
     # 1. Define the baseline performance metric
     metric = roc_auc_score if task == 'classification' else mean_squared_error
 
     # 2. Get the baseline predictions
-    y_pred, X_test, y_test = baseline_predictions(df=df, target=target, task=task)
+    y_pred, X_test, y_test = baseline_predictions(df=df, label=label, task=task)
 
     # 3. Get the performances per feature value
     uniques = set(X_test[feature])
@@ -144,17 +145,17 @@ def performance_per_feature_values(df: pd.DataFrame, feature: str, target: str, 
 
     return results
 
-def performance_per_missing_value(df: pd.DataFrame, feature: str, target: str, task='classification'):
+def performance_per_missing_value(df: pd.DataFrame, feature: str, label: str, task='classification'):
     """Performance difference between valued and missing values in feature."""
 
     # 0. Infer the prediction task
-    task = get_prediction_task(df=df, label=target)
+    task = get_prediction_task(df=df, label=label)
 
     # 1. Define the baseline performance metric
     metric = roc_auc_score if task == 'classification' else mean_squared_error
 
     # 2. Get the baseline predictions
-    y_pred, X_test, y_test = baseline_predictions(df=df, target=target, task=task)
+    y_pred, X_test, y_test = baseline_predictions(df=df, label=label, task=task)
 
     # 3. Get the performance per valued vs missing feature
     missing_mask = X_test[feature].isna()
