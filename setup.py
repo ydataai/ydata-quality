@@ -1,15 +1,13 @@
-from fileinput import FileInput
 from setuptools import setup, find_namespace_packages
 from pathlib import Path
 
-
+# Load the local files
 here = Path(__file__).parent.resolve()
-
 requirements = (here / "requirements.txt").read_text(encoding="utf8")
 long_description = (here / 'README.md').read_text(encoding='utf-8')
-
 version = (here / 'VERSION').read_text().rstrip("\n")
 
+# Save the version file within the package directory
 with open('src/ydata_quality/version.py', 'w') as version_file:
   version_file.write(f'__version__ = \'{version}\'')
 
@@ -21,7 +19,7 @@ setup(name='ydata-quality',
       author='YData',
       author_email='community@ydata.ai',
       classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha'
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
         'Intended Audience :: End Users/Desktop',
