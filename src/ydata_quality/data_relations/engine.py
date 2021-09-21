@@ -9,13 +9,15 @@ import pandas as pd
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.correlations import correlation_matrix, partial_correlation_matrix, correlation_plotter, vif_collinearity, chi2_collinearity
 from ydata_quality.utils.auxiliary import infer_dtypes, standard_normalize
+from ydata_quality.utils.logger import *
 
 class DataRelationsDetector(QualityEngine):
     """Main class to run data relations analysis.
     """
 
-    def __init__(self):
-        return  # Override the base class init method
+    def __init__(self):  # Overrides base class init
+        self._warnings = [] # reset the warnings to avoid duplicates
+        self._logger = create_logger(NAME, STREAM, LOG_LEVEL)
 
     @property
     def tests(self):
@@ -64,9 +66,6 @@ class DataRelationsDetector(QualityEngine):
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
-        self._warnings = [] # reset the warnings to avoid duplicates
-        if not dtypes:
-            dtypes = {}
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
         df = standard_normalize(df, dtypes)
         results = {}

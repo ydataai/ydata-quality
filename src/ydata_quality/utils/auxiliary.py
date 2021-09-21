@@ -50,9 +50,10 @@ def min_max_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
     Args:
         df (pd.DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
-    numeric_features = [col for col in df.columns if dtypes[col]=='numerical']
-    scaled_data = MinMaxScaler().fit_transform(df[numeric_features].values)
-    df[numeric_features] = scaled_data
+    numeric_features = [col for col in df.columns if dtypes.get(col)=='numerical']
+    if numeric_features:
+        scaled_data = MinMaxScaler().fit_transform(df[numeric_features].values)
+        df[numeric_features] = scaled_data
     return df
 
 def standard_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
@@ -61,9 +62,10 @@ def standard_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
     Args:
         df (pd.DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
-    numeric_features = [col for col in df.columns if dtypes[col]=='numerical']
-    scaled_data = StandardScaler().fit_transform(df[numeric_features].values)
-    df[numeric_features] = scaled_data
+    numeric_features = [col for col in df.columns if dtypes.get(col)=='numerical']
+    if numeric_features:
+        scaled_data = StandardScaler().fit_transform(df[numeric_features].values)
+        df[numeric_features] = scaled_data
     return df
 
 def find_duplicate_columns(df: pd.DataFrame, is_close=False) -> dict:

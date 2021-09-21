@@ -10,7 +10,6 @@ from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
-from ydata_quality.utils.enum import DataFrameType
 from ydata_quality.utils.logger import *
 
 
