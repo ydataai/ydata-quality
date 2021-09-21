@@ -1,6 +1,7 @@
 """
 Implementation of DataRelationsDetector engine to run data relations analysis.
 """
+import os
 from typing import Optional, Tuple, List
 from logging import _nameToLevel
 
@@ -10,7 +11,7 @@ import pandas as pd
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.correlations import correlation_matrix, partial_correlation_matrix, correlation_plotter, vif_collinearity, chi2_collinearity
 from ydata_quality.utils.auxiliary import infer_dtypes, standard_normalize
-from ydata_quality.utils.logger import *
+from ydata_quality.utils.logger import create_logger, NAME, STREAM
 
 class DataRelationsDetector(QualityEngine):
     """Main class to run data relations analysis.
@@ -21,7 +22,7 @@ class DataRelationsDetector(QualityEngine):
         self._warnings = [] # reset the warnings to avoid duplicates
         if severity in _nameToLevel:
             os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
         self._logger = create_logger(NAME, STREAM, log_level)
 
     @property

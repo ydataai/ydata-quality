@@ -3,6 +3,7 @@ Implementation of main class for Data Quality checks.
 """
 from collections import Counter
 from logging import _nameToLevel
+import os
 from typing import Callable, List, Optional, Union
 
 import pandas as pd
@@ -16,7 +17,7 @@ from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
 from ydata_quality.data_relations import DataRelationsDetector
-from ydata_quality.utils.logger import *
+from ydata_quality.utils.logger import create_logger, NAME, STREAM
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -80,7 +81,7 @@ class DataQuality:
         self._warnings = list()
         if severity in _nameToLevel:
             os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
         self._logger = create_logger(NAME, STREAM, log_level)
         self._random_state = random_state
 

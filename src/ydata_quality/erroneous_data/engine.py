@@ -83,7 +83,7 @@ class ErroneousDataIdentifier(QualityEngine):
             skip: List of columns that will not be target of search for flatlines.
                 Pass '__index' inside skip list to skip looking for flatlines at the index."""
         if self.df_type == DataFrameType.TABULAR:
-            self._logger.info('The provided DataFrame is not a valid Timeseries type, skipping this test.')
+            self._logger.debug('The provided DataFrame is not a valid Timeseries type, skipping flatlines test.')
             return None
         flatlines = {}
         for column in self.df.columns:  # Compile flatline index

@@ -15,6 +15,7 @@ class DuplicateChecker(QualityEngine):
 
     def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False):
         """
+        Arguments:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
             entities (List[Union[str, List[str]]]): entities relevant for duplicate analysis. Passing lists allows composed entities of multiple columns.
             is_close (bool): Pass True to use numpy.isclose instead of pandas.equals in column comparison."""

@@ -12,7 +12,7 @@ from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
-from ydata_quality.utils.logger import *
+from ydata_quality.utils.logger import create_logger, NAME, STREAM
 
 
 class QualityEngine(ABC):
@@ -24,7 +24,7 @@ class QualityEngine(ABC):
         self._warnings = list()
         if severity in _nameToLevel:
             os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
         self._logger = create_logger(NAME, STREAM, log_level)
         self._tests = []
         self._label = label
@@ -143,6 +143,6 @@ class QualityEngine(ABC):
             try: # if anything fails
                 results[test] = getattr(self, test)()
             except Exception as exc: # print a Warning and log the message
-                self._logger.warning('Skipping test due to failure during computation. See results folder of this test for further details.')
+                self._logger.warning('Skipping %s due to failure during computation. See results folder of this test for further details.', test)
                 results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
         return results
