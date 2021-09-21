@@ -20,6 +20,8 @@ clean-env: ### Removes environment directory
 env: ### Create a virtual environment
 	test -d $(VENV) || python -m venv $(VENV)
 	$(PIP) install -r requirements.txt
+
+env-dev: env
 	$(PIP) install -r requirements-dev.txt
 
 lint: ### Validates project with linting rules
