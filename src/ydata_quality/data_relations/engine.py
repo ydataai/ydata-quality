@@ -2,6 +2,7 @@
 Implementation of DataRelationsDetector engine to run data relations analysis.
 """
 from typing import Optional, Tuple, List
+from logging import _nameToLevel
 
 import numpy as np
 import pandas as pd
@@ -15,9 +16,13 @@ class DataRelationsDetector(QualityEngine):
     """Main class to run data relations analysis.
     """
 
-    def __init__(self):  # Overrides base class init
+    def __init__(self, severity: Optional[str] = None):  # Overrides base class init
+        "severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"
         self._warnings = [] # reset the warnings to avoid duplicates
-        self._logger = create_logger(NAME, STREAM, LOG_LEVEL)
+        if severity in _nameToLevel:
+            os.environ["DQ_LOG_LEVEL"] = severity
+        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        self._logger = create_logger(NAME, STREAM, log_level)
 
     @property
     def tests(self):

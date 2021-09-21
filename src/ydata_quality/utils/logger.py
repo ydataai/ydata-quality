@@ -6,7 +6,6 @@ import os
 # Default vars for the logger
 NAME = os.getenv('DQ_LOGGER_NAME', 'DQ_Logger')
 STREAM = sys.stdout
-LOG_LEVEL = os.getenv('DQ_LOG_LEVEL', logging.WARNING)
 
 def create_logger(name, stream: TextIO = sys.stdout, level=logging.INFO):
   handler = logging.StreamHandler(stream)

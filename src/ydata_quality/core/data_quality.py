@@ -2,6 +2,7 @@
 Implementation of main class for Data Quality checks.
 """
 from collections import Counter
+from logging import _nameToLevel
 from typing import Callable, List, Optional, Union
 
 import pandas as pd
@@ -38,8 +39,8 @@ class DataQuality:
                     corr_th: float = 0.8,
                     vif_th: float = 5,
                     p_th: float = 0.05,
-                    plot: bool = True
-                    ):
+                    plot: bool = True,
+                    severity: Optional[str]= 'ERROR'):
         """
         Engines:
         - Duplicates
@@ -72,11 +73,15 @@ class DataQuality:
             vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
             p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
         #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
-        self._logger = create_logger(NAME, STREAM, LOG_LEVEL)
+        if severity in _nameToLevel:
+            os.environ["DQ_LOG_LEVEL"] = severity
+        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        self._logger = create_logger(NAME, STREAM, log_level)
         self._random_state = random_state
 
         self._engines_legacy = { # Default list of engines

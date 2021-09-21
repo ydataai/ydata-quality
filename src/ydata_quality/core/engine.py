@@ -4,6 +4,8 @@ Implementation of abstract class for Data Quality engines.
 from abc import ABC
 from collections import Counter
 from typing import Optional
+import os
+from logging import _nameToLevel
 
 import pandas as pd
 from numpy import random
@@ -16,11 +18,14 @@ from ydata_quality.utils.logger import *
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None):
+    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None, severity: Optional[str]= None):
         self._df = df
         self._df_type = None
         self._warnings = list()
-        self._logger = create_logger(NAME, STREAM, LOG_LEVEL)
+        if severity in _nameToLevel:
+            os.environ["DQ_LOG_LEVEL"] = severity
+        log_level = os.getenv('DQ_LOG_LEVEL', logging.INFO)
+        self._logger = create_logger(NAME, STREAM, log_level)
         self._tests = []
         self._label = label
         self._dtypes = dtypes
