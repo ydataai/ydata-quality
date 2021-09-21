@@ -179,7 +179,7 @@ class DriftAnalyser(QualityEngine):
             statistic_value, p_value = -1, None
         return statistic_value, p_value, test_name
 
-    def ref_covariate_drift(self, p_thresh: float= 0.05) -> pd.DataFrame:
+    def ref_covariate_drift(self, p_thresh: float= 0.05, plot: bool = False) -> pd.DataFrame:
         """Controls covariate drift in reference subsamples.
         The controlled metric is the number of features with no drift detection.
         This % is plotted against the size of the reference subsample.
@@ -209,20 +209,23 @@ class DriftAnalyser(QualityEngine):
             all_p_vals.iloc[idx] = p_vals
             control_metric.iloc[idx] = 100*len([p for p in p_vals if p > bonferroni_p])/len(p_vals)
         all_p_vals['Corrected p-value threshold'] = bonferroni_p
-        control_metric.plot(title='Reference sample covariate features no drift(%)',
-            xlabel='Percentage of remaining sample used',
-            ylabel='Percentage of no drift features',
-            ylim = (0, 104), style='.-')
-        plt.show()
+        if plot:
+            control_metric.plot(title='Reference sample covariate features no drift(%)',
+                xlabel='Percentage of remaining sample used',
+                ylabel='Percentage of no drift features',
+                ylim = (0, 104), style='.-')
+            plt.show()
         return all_p_vals
 
-    def ref_label_drift(self, p_thresh: float= 0.05):
+    def ref_label_drift(self, p_thresh: float= 0.05, plot: bool = False):
         """Controls label drift in the reference sample (df).
         The p-value of the test is plotted against the size of the reference subsample.
         A monotonic increase of this metric is expected as we increase the subsample size.
         The dtype is used to decide the test to be applied to the label (chi squared or KS).
         Args:
-            p_thresh (float): The p_threshold used for the test."""
+            p_thresh (float): The p_threshold used for the test.
+            plot (bool): if True, produces graphical outputs.
+        """
         if self.label is None:
             self._logger.warning("No label was provided. Test skipped.")
             return
@@ -237,10 +240,12 @@ class DriftAnalyser(QualityEngine):
                 test_sample = downsample)
             p_values['Label p-value'].iloc[idx] = p_val
         p_values['p-value threshold'] = p_thresh
-        p_values.plot(title='Reference sample label p-values',
-            xlabel='Percentage of remaining sample used',
-            ylabel=f'{test_name} test p-value', style='.-')
-        plt.show()
+        if plot:
+            p_values.plot(title='Reference sample label p-values',
+                xlabel='Percentage of remaining sample used',
+                ylabel=f'{test_name} test p-value', style='.-')
+            plt.show()
+        return p_values
 
     def sample_covariate_drift(self, p_thresh: float= 0.05) -> pd.DataFrame:
         """Detects covariate drift in the test sample (measured against the full reference sample).

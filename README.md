@@ -25,11 +25,8 @@ df = pd.read_csv('./datasets/transformed/census_10k.csv')
 # create a DataQuality object from the main class that holds all quality modules
 dq = DataQuality(df=df)
 
-# run the tests
+# run the tests and outputs a summary of the quality tests
 results = dq.evaluate()
-
-# Output a report of the quality issues found by the engines
-dq.report() 
 ```
 ```
 Warnings count by priority:
@@ -41,6 +38,13 @@ List of warnings sorted by priority:
 	[EXACT DUPLICATES] Found 3 instances with exact duplicate feature values. (Priority 2: usage allowed, limited human intelligibility)
 	[FLATLINES] Found 4627 flatline events with a minimun length of 5 among the columns {'marital-status', 'workclass', 'income', 'native-country', 'capital-gain', 'capital-loss', 'education', 'occupation', 'workclass2', 'sex', 'education-num', 'hours-per-week', 'relationship', 'race'}. (Priority 2: usage allowed, limited human intelligibility)
 	[PREDEFINED ERRONEOUS DATA] Found 1960 ED values in the dataset. (Priority 2: usage allowed, limited human intelligibility)
+```
+
+
+On top of the summary, you can retrieve a list of detected warnings for detailed inspection.
+```python
+# retrieve a list of data quality warnings 
+warnings = dq.get_warnings()
 ```
 # Examples
 
