@@ -19,7 +19,7 @@ setup(name='ydata-quality',
       author='YData',
       author_email='community@ydata.ai',
       classifiers=[
-        'Development Status :: 3 - Alpha'
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
         'Intended Audience :: End Users/Desktop',
