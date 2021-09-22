@@ -67,9 +67,9 @@ To dive into any focussed module, and to understand how they work, here are tuto
 
 # Contributing
 We are open to collaboration! If you want to start contributing you only need to:
-1. Search for an issue in which you would like to work. Issues for newcomers are labeled with good first issue.
+1. Search for an issue in which you would like to work on. Issues for newcomers are labeled with good first issue.
 2. Create a PR solving the issue.
-3. We would review every PRs and either accept or ask for revisions.
+3. We would review every PR and either accept or ask for revisions.
 
 You can also join the discussions on the #data-quality channel on our [Slack](http://slack.ydata.ai) and request features/bug fixes by opening issues on our repository.
 
