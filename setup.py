@@ -1,12 +1,11 @@
 from setuptools import setup, find_namespace_packages
 from pathlib import Path
 
-from src.ydata_quality.__version__ import __version__ as version
-
 # Load the local files
 here = Path(__file__).parent.resolve()
 requirements = (here / "requirements.txt").read_text(encoding="utf8")
 long_description = (here / 'README.md').read_text(encoding='utf-8')
+version = (here / 'VERSION').read_text().rstrip("\n")
 
 setup(name='ydata-quality',
       version=version,
