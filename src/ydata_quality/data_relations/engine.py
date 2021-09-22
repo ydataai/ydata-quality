@@ -69,7 +69,7 @@ class DataRelationsDetector(QualityEngine):
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
-        df = standard_normalize(df, dtypes)
+        df = standard_normalize(df, self.dtypes)
         results = {}
         corr_mat, _ = correlation_matrix(df, self.dtypes, True)
         p_corr_mat = partial_correlation_matrix(corr_mat)
