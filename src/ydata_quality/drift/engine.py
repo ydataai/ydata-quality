@@ -6,12 +6,12 @@ from typing import Callable, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 
-import pandas as pd
+from pandas import DataFrame, Series
 from scipy.stats import ks_2samp
 from scipy.stats._continuous_distns import chi2_gen
 
-from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.auxiliary import random_split
+from ..core import QualityEngine, QualityWarning
+from ..utils.auxiliary import random_split
 
 
 class ModelWrapper:
@@ -30,26 +30,26 @@ class ModelWrapper:
         return self._model
 
     @staticmethod
-    def _preprocess(inputs: pd.DataFrame) -> pd.DataFrame:
+    def _preprocess(inputs: DataFrame) -> DataFrame:
         """Performs any preprocessing of the model input.
         By default returns input without any transformation.
         Override to define custom preprocessing steps."""
         return inputs
 
     @staticmethod
-    def _postprocess(outputs: pd.Series) -> pd.Series:
+    def _postprocess(outputs: Series) -> Series:
         """Performs any postprocessing of the models label predictions.
         By default returns input without any transformation.
         Override to define custom model predictions postprocessing steps."""
         return outputs
 
-    def _predict(self, inputs: pd.DataFrame) -> pd.Series:
+    def _predict(self, inputs: DataFrame) -> Series:
         """Runs the provided callable model on pretransformed input."""
         if hasattr(self.model, "predict"):  # Sklearn and tensorflow model standards
             return self.model.predict(inputs)
         return self.model(inputs)  # Pytorch and other __call__ prediction standards
 
-    def __call__(self, inputs: pd.DataFrame) -> pd.Series:
+    def __call__(self, inputs: DataFrame) -> Series:
         """Returns a sample of labels predicted by the model from the covariate sample inputs.
         The returned Series is expected to have the same number of rows as inputs."""
         transformed_inputs = self._preprocess(inputs)
@@ -68,15 +68,15 @@ class DriftAnalyser(QualityEngine):
         sample_concept_drift: detects concept drift in the test sample based on a wrapped model provided by the user.
     """
 
-    def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
-        label: Optional[str] = None, model: Optional[Union[Callable, ModelWrapper]] = None, holdout: float = 0.2,
-        random_state: Optional[int] = None, severity:Optional[str]=None):
+    def __init__(self, ref: DataFrame, sample: Optional[DataFrame] = None,
+                 label: Optional[str] = None, model: Optional[Union[Callable, ModelWrapper]] = None, holdout: float = 0.2,
+                 random_state: Optional[int] = None, severity: Optional[str] = None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:
-            ref (pd.DataFrame): Reference sample used to run sampling analysis, ideally the users dataset or a train
+            ref (DataFrame): Reference sample used to run sampling analysis, ideally the users dataset or a train
                  dataset.
-            sample (Optional, pd.DataFrame): Sample to test drift against the reference sample, can be new data,
+            sample (Optional, DataFrame): Sample to test drift against the reference sample, can be new data,
                  a slice of the train dataset or a test sample.
             label (Optional, str): Defines a feature in the provided samples as label.
             model (Optional, Union[Callable, ModelWrapper]): A custom model or an overridden version of the ModelWrapper class (do this to define custom pre/post process methods).
@@ -91,17 +91,18 @@ class DriftAnalyser(QualityEngine):
         self.model = model
         self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self.random_state)
         self._tests = ['ref_covariate_drift', 'ref_label_drift', 'sample_covariate_drift',
-            'sample_label_drift', 'sample_concept_drift']
+                       'sample_label_drift', 'sample_concept_drift']
 
     @property
-    def sample(self) -> pd.DataFrame:
+    def sample(self) -> DataFrame:
         "Returns the user provided test sample."
         return self._sample
 
     @sample.setter
-    def sample(self, sample: pd.DataFrame):
+    def sample(self, sample: DataFrame):
         if sample is not None:
-            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)), "The reference and test samples must share schema."
+            assert sorted(list(sample.columns)) == sorted(list(self.df.columns)
+                                                          ), "The reference and test samples must share schema."
         self._sample = sample
 
     @property
@@ -120,10 +121,10 @@ class DriftAnalyser(QualityEngine):
                 self._model = ModelWrapper(model)
             try:
                 self.__test_model()
-            except:
+            except BaseException:
                 self._model = None
         else:
-            self._model = None #TODO: RuntimeWarning here ('Provided model failed test')
+            self._model = None  # TODO: RuntimeWarning here ('Provided model failed test')
 
     def __test_model(self):
         """Tests the provided model wrapper.
@@ -135,51 +136,54 @@ class DriftAnalyser(QualityEngine):
             test_x = self.df.head().copy()
             test_x.drop(self.label, axis=1, inplace=True)
             output = self.model(test_x)
-            assert isinstance(output, (pd.Series, np.ndarray)), "The provided model failed to produce the expected output."
-            assert len(output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
+            assert isinstance(output, (Series, np.ndarray)), "The provided model failed to produce the expected output."
+            assert len(
+                output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
         else:
             raise Exception
 
     @staticmethod
-    def _chisq_2samp(reference_data: pd.Series, test_data: pd.Series) -> Tuple[float]:
+    def _chisq_2samp(reference_data: Series, test_data: Series) -> Tuple[float]:
         """Asserts validity of performing chisquared test on two samples.
         Tests the hypothesis that test_data follows reference_data's distribution.
         Will raise an AssertionError in case the test is not valid.
         Args:
-            reference_data (pd.Series): Reference data, used to compute degrees of freedom and expectation
-            test_data (pd.Series): Test data, compared to the reference data
+            reference_data (Series): Reference data, used to compute degrees of freedom and expectation
+            test_data (Series): Test data, compared to the reference data
         Returns:
             chi_stat (float): The chi squared statistic of this test
             p_val (float): The p-value of the tested hypothesis
         """
         ref_unique_freqs = reference_data.value_counts(normalize=True)
         test_unique_counts = test_data.value_counts()
-        assert set(test_unique_counts.index).issubset(set(ref_unique_freqs.index)),"Provided test_sample contains categories unknown to the ref_sample"
-        test_expected_counts = ref_unique_freqs*len(test_data)
-        assert sum(test_expected_counts<5)==0, "The test sample has categories with expected count below 5 (this sample is too small for chi-squared test)"
-        chi_stat = sum(((test_unique_counts-test_expected_counts)**2)/test_expected_counts)
-        p_val = 1-chi2_gen().cdf(x=chi_stat, df=len(ref_unique_freqs-1))
+        assert set(test_unique_counts.index).issubset(set(ref_unique_freqs.index)
+                                                      ), "Provided test_sample contains categories unknown to the ref_sample"
+        test_expected_counts = ref_unique_freqs * len(test_data)
+        assert sum(test_expected_counts <
+                   5) == 0, "The test sample has categories with expected count below 5 (this sample is too small for chi-squared test)"
+        chi_stat = sum(((test_unique_counts - test_expected_counts)**2) / test_expected_counts)
+        p_val = 1 - chi2_gen().cdf(x=chi_stat, df=len(ref_unique_freqs - 1))
         return chi_stat, p_val
 
-    def _2sample_feat_good_fit(self, ref_sample: pd.Series, test_sample: pd.Series) -> Tuple[float, str]:
+    def _2sample_feat_good_fit(self, ref_sample: Series, test_sample: Series) -> Tuple[float, str]:
         """Performs a goodness of fit test between 2 samples.
         The column dtype of the samples allows for an appropriate statistic test selection.
         Returns tuple (statistic_value, p_value, test_name).
         If the statistic test raises an exception, (-1, None, test_name) is returned instead.
         Args:
-            ref_sample (pd.Series): Reference sample (Relevant distinction for chi-squared test)
-            test_sample (pd.Series): Test sample"""
+            ref_sample (Series): Reference sample (Relevant distinction for chi-squared test)
+            test_sample (Series): Test sample"""
         statistics = {'categorical': ('Chi-Squared', self._chisq_2samp),
-            'numerical': ('Kolmogorov-Smirnov', ks_2samp)}
+                      'numerical': ('Kolmogorov-Smirnov', ks_2samp)}
         feat_dtype = self.dtypes[ref_sample.name]
         test_name, test = statistics[feat_dtype]
         try:
             statistic_value, p_value = test(ref_sample, test_sample)
-        except:
+        except BaseException:
             statistic_value, p_value = -1, None
         return statistic_value, p_value, test_name
 
-    def ref_covariate_drift(self, p_thresh: float= 0.05, plot: bool = False) -> pd.DataFrame:
+    def ref_covariate_drift(self, p_thresh: float= 0.05, plot: bool = False) -> DataFrame:
         """Controls covariate drift in reference subsamples.
         The controlled metric is the number of features with no drift detection.
         This % is plotted against the size of the reference subsample.
@@ -196,18 +200,18 @@ class DriftAnalyser(QualityEngine):
             holdout.drop(self.label, axis=1, inplace=True)
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
         perc_index = ["{0:.0%}".format(fraction) for fraction in leftover_fractions]
-        control_metric = pd.Series(index=perc_index, dtype=str)
-        bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
-        all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
+        control_metric = Series(index=perc_index, dtype=str)
+        bonferroni_p = p_thresh / len(covariates.columns)  # Bonferroni correction
+        all_p_vals = DataFrame(index=perc_index, columns=covariates.columns)
         for idx, fraction in enumerate(leftover_fractions):
             downsample, _ = random_split(covariates, fraction, random_state=self.random_state)
             p_vals = []
             for column in covariates.columns:
-                _, p_val, _ = self._2sample_feat_good_fit(ref_sample = holdout[column],
-                    test_sample = downsample[column])
+                _, p_val, _ = self._2sample_feat_good_fit(ref_sample=holdout[column],
+                                                          test_sample=downsample[column])
                 p_vals.append(p_val)
             all_p_vals.iloc[idx] = p_vals
-            control_metric.iloc[idx] = 100*len([p for p in p_vals if p > bonferroni_p])/len(p_vals)
+            control_metric.iloc[idx] = 100 * len([p for p in p_vals if p > bonferroni_p]) / len(p_vals)
         all_p_vals['Corrected p-value threshold'] = bonferroni_p
         if plot:
             control_metric.plot(title='Reference sample covariate features no drift(%)',
@@ -228,16 +232,17 @@ class DriftAnalyser(QualityEngine):
         """
         if self.label is None:
             self._logger.warning("No label was provided. Test skipped.")
-            return
+            return None
+
         labels = self._remaining_data[self.label].copy()
         holdout = self._holdout[self.label]
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
-        p_values = pd.DataFrame(index=["{:.0%}".format(fraction) for fraction in leftover_fractions],
-            columns=['Label p-value', 'p-value threshold'])
+        p_values = DataFrame(index=["{:.0%}".format(fraction) for fraction in leftover_fractions],
+                             columns=['Label p-value', 'p-value threshold'])
         for idx, fraction in enumerate(leftover_fractions):
             downsample, _ = random_split(labels, fraction, random_state=self.random_state)
-            _, p_val, test_name = self._2sample_feat_good_fit(ref_sample = holdout,
-                test_sample = downsample)
+            _, p_val, test_name = self._2sample_feat_good_fit(ref_sample=holdout,
+                                                              test_sample=downsample)
             p_values['Label p-value'].iloc[idx] = p_val
         p_values['p-value threshold'] = p_thresh
         if plot:
@@ -247,7 +252,7 @@ class DriftAnalyser(QualityEngine):
             plt.show()
         return p_values
 
-    def sample_covariate_drift(self, p_thresh: float= 0.05) -> pd.DataFrame:
+    def sample_covariate_drift(self, p_thresh: float = 0.05) -> DataFrame:
         """Detects covariate drift in the test sample (measured against the full reference sample).
         The p-value threshold is adjusted for the multivariate case via Bonferroni correction.
         Any p-value below the adjusted threshold indicates test sample drift, raising a warning.
@@ -262,34 +267,34 @@ class DriftAnalyser(QualityEngine):
         if self.label:
             covariates.drop(self.label, axis=1, inplace=True)
             test_sample.drop(self.label, axis=1, inplace=True)
-        bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
-        test_summary = pd.DataFrame(index=covariates.columns,
-            columns=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
+        bonferroni_p = p_thresh / len(covariates.columns)  # Bonferroni correction
+        test_summary = DataFrame(index=covariates.columns,
+                                 columns=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
         for column in covariates.columns:
-            stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample = covariates[column],
-                test_sample = test_sample[column])
+            stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample=covariates[column],
+                                                                     test_sample=test_sample[column])
             test_summary.loc[column] = [test_name, stat_val, p_val, None]
         test_summary['Verdict'] = test_summary['p-value'].apply(
-            lambda x: 'OK' if x > bonferroni_p else ('Drift' if x>= 0 else 'Invalid test'))
-        n_drifted_feats = sum(test_summary['Verdict']=='Drift')
-        n_invalid_tests = sum(test_summary['Verdict']=='Invalid test')
-        if n_drifted_feats>0:
+            lambda x: 'OK' if x > bonferroni_p else ('Drift' if x >= 0 else 'Invalid test'))
+        n_drifted_feats = sum(test_summary['Verdict'] == 'Drift')
+        n_invalid_tests = sum(test_summary['Verdict'] == 'Invalid test')
+        if n_drifted_feats > 0:
             self.store_warning(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=2, data=test_summary,
                     description=f"""{n_drifted_feats} features accused drift in the sample test. The covariates of the test sample do not appear to be representative of the reference sample."""
-            ))
-        elif n_invalid_tests>0:
+                ))
+        elif n_invalid_tests > 0:
             self.store_warning(
                 QualityWarning(
                     test='Sample covariate drift', category='Sampling', priority=3, data=test_summary,
                     description=f"""There were {n_invalid_tests} invalid tests found. This is likely due to a small test sample size. The data summary should be analyzed before considering the test conclusive."""
-            ))
+                ))
         else:
             self._logger.info("Covariate drift was not detected in the test sample.")
         return test_summary
 
-    def sample_label_drift(self, p_thresh: float= 0.05) -> pd.Series:
+    def sample_label_drift(self, p_thresh: float = 0.05) -> Series:
         """Detects label drift in the test sample (measured against the full reference sample).
         A p-value below the adjusted threshold indicates test sample drift, raising a warning.
         The label dtype is used to decide the test to be applied (chi squared or KS).
@@ -300,28 +305,29 @@ class DriftAnalyser(QualityEngine):
             return "[SAMPLE LABEL DRIFT] To run sample label drift, a test sample must be provided with the defined label column. Test skipped."
         labels = self.df[self.label].copy()
         test_sample = self.sample[self.label].copy()
-        stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample = labels,
-            test_sample = test_sample)
-        test_summary = pd.Series(data=[test_name, stat_val, p_val, None],
-            index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
-        test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val>= 0 else 'Invalid test')
-        if test_summary['Verdict']=='Drift':
+        stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample=labels,
+                                                                 test_sample=test_sample)
+        test_summary = Series(data=[test_name, stat_val, p_val, None],
+                              index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
+        test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val >= 0 else 'Invalid test')
+        if test_summary['Verdict'] == 'Drift':
             self.store_warning(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=2, data=test_summary,
-                    description="""The label accused drift in the sample test with a p-test of {:.4f}, which is under the threshold {:.2f}. The label of the test sample does not appear to be representative of the reference sample.""".format(p_val, p_thresh)
-            ))
-        elif test_summary['Verdict']=='Invalid test':
+                    description="""The label accused drift in the sample test with a p-test of {:.4f}, which is under the threshold {:.2f}. The label of the test sample does not appear to be representative of the reference sample.""".format(
+                        p_val, p_thresh)
+                ))
+        elif test_summary['Verdict'] == 'Invalid test':
             self.store_warning(
                 QualityWarning(
                     test='Sample label drift', category='Sampling', priority=3, data=test_summary,
                     description="The test was invalid. This is likely due to a small test sample size."
-            ))
+                ))
         else:
             self._logger.info("Label drift was not detected in the test sample.")
         return test_summary
 
-    def sample_concept_drift(self, p_thresh: float= 0.05) -> pd.Series:
+    def sample_concept_drift(self, p_thresh: float = 0.05) -> Series:
         """Detects concept drift in the test sample resorting to a user provided model wrapper.
         Results may not be conclusive without first testing if the test sample has label or covariate drift.
         A p-value below the adjusted threshold indicates test sample concept drift, raising a warning.
@@ -335,25 +341,26 @@ class DriftAnalyser(QualityEngine):
         test_sample = self.sample.copy()
         ref_sample.drop(self.label, axis=1, inplace=True)
         test_sample.drop(self.label, axis=1, inplace=True)
-        ref_preds = pd.Series(self.model(ref_sample), name=self.label)
-        test_preds = pd.Series(self.model(test_sample), name=self.label)
-        stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample = ref_preds,
-            test_sample = test_preds)
-        test_summary = pd.Series(data=[test_name, stat_val, p_val, None],
-            index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
-        test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val>= 0 else 'Invalid test')
-        if test_summary['Verdict']=='Drift':
+        ref_preds = Series(self.model(ref_sample), name=self.label)
+        test_preds = Series(self.model(test_sample), name=self.label)
+        stat_val, p_val, test_name = self._2sample_feat_good_fit(ref_sample=ref_preds,
+                                                                 test_sample=test_preds)
+        test_summary = Series(data=[test_name, stat_val, p_val, None],
+                              index=['Statistic', 'Statistic Value', 'p-value', 'Verdict'])
+        test_summary['Verdict'] = 'OK' if p_val > p_thresh else ('Drift' if p_val >= 0 else 'Invalid test')
+        if test_summary['Verdict'] == 'Drift':
             self.store_warning(
                 QualityWarning(
                     test='Concept drift', category='Sampling', priority=2, data=test_summary,
-                    description="""There was concept drift detected with a p-test of {:.4f}, which is under the threshold {:.2f}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample.""".format(p_val, p_thresh)
-            ))
-        elif test_summary['Verdict']=='Invalid test':
+                    description="""There was concept drift detected with a p-test of {:.4f}, which is under the threshold {:.2f}. The model's predicted labels for the test sample do not appear to be representative of the distribution of labels predicted for the reference sample.""".format(
+                        p_val, p_thresh)
+                ))
+        elif test_summary['Verdict'] == 'Invalid test':
             self.store_warning(
                 QualityWarning(
                     test='Concept drift', category='Sampling', priority=3, data=test_summary,
                     description="The test was invalid. This is likely due to a small test sample size."
-            ))
+                ))
         else:
             self._logger.info("Concept drift was not detected between the reference and the test samples.")
         return test_summary

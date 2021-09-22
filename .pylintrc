@@ -1,15 +1,16 @@
 [BASIC]
 good-names=df,th
+disable=too-many-arguments,arguments-differ,too-many-locals,dangerous-default-value
 
 [FORMAT]
 max-line-length=120
 too-many-arguments=5
 
 [QUALITY]
-fail-under=9.0
+fail-under=7.0
 
 [REPORTS]
 output-format=colorized
 
 [MASTER]
-ignore=version.py
+ignore=__version__.py

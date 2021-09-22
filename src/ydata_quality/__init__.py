@@ -1,9 +1,9 @@
 """
 YData open-source lib for Data Quality.
 """
-from ydata_quality.core.data_quality import DataQuality
+from .core.data_quality import DataQuality
 
-from .version import __version__
+from .__version__ import __version__
 
 
 __all__ = [
