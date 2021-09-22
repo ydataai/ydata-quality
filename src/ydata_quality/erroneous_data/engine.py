@@ -98,11 +98,11 @@ class ErroneousDataIdentifier(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test='Flatlines', category='Erroneous Data', priority=2, data=flatlines,
-                    description=f"Found {total_flatlines} flatline events with a minimun length of {th} among the columns {set(flatlines.keys())}."
+                    description=f"Found {total_flatlines} flatline events with a minimun length of {th:.0f} among the columns {set(flatlines.keys())}."
             ))
             return flatlines
         else:
-            self._logger.info("No flatline events with a minimum length of %f were found.", th)
+            self._logger.info(f"No flatline events with a minimum length of {th:.0f} were found.")
 
     def predefined_erroneous_data(self, skip: list=[], short: bool = True):
         """Runs a check against a list of predefined erroneous data values.

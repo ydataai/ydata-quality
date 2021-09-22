@@ -38,7 +38,7 @@ class DataQuality:
                     corr_th: float = 0.8,
                     vif_th: float = 5,
                     p_th: float = 0.05,
-                    plot: bool = True,
+                    plot: bool = False,
                     severity: str= 'ERROR'):
         """
         Engines:
@@ -154,14 +154,21 @@ class DataQuality:
         for engine in self.engines.values():
             self._warnings += engine.get_warnings()
 
-    def evaluate(self):
-        "Runs all the individual data quality checks and aggregates the results."
-        results = {name: engine.evaluate(*self._eval_args.get(name,[])) for name, engine in self.engines.items()}
+    def evaluate(self, summary: bool = True) -> dict:
+        """Runs all the individual data quality checks and aggregates the results.
+
+        Arguments:
+            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+        """
+        results = {name: engine.evaluate(*self._eval_args.get(name,[]), summary=False) for name, engine in self.engines.items()}
+        self.__store_warnings() # fetch all warnings from the engines
+        self.__clean_warnings()
+        if summary:
+            self._report()
         return results
 
-    def report(self):
+    def _report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        self.__store_warnings() # fetch all warnings from the engines
         self.__clean_warnings()
         if not self._warnings:
             print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')

@@ -25,22 +25,29 @@ df = pd.read_csv('./datasets/transformed/census_10k.csv')
 # create a DataQuality object from the main class that holds all quality modules
 dq = DataQuality(df=df)
 
-# run the tests
+# run the tests and outputs a summary of the quality tests
 results = dq.evaluate()
-
-# Output a report of the quality issues found by the engines
-dq.report() 
 ```
 ```
-Warnings count by priority:
+Warnings:
+	TOTAL: 5 warning(s)
 	Priority 1: 1 warning(s)
-	Priority 2: 3 warning(s)
-	TOTAL: 4 warning(s)
-List of warnings sorted by priority:
-	[DUPLICATE COLUMNS] Found 1 columns with exactly the same feature values as other columns. (Priority 1: heavy impact expected)
-	[EXACT DUPLICATES] Found 3 instances with exact duplicate feature values. (Priority 2: usage allowed, limited human intelligibility)
-	[FLATLINES] Found 4627 flatline events with a minimun length of 5 among the columns {'marital-status', 'workclass', 'income', 'native-country', 'capital-gain', 'capital-loss', 'education', 'occupation', 'workclass2', 'sex', 'education-num', 'hours-per-week', 'relationship', 'race'}. (Priority 2: usage allowed, limited human intelligibility)
-	[PREDEFINED ERRONEOUS DATA] Found 1960 ED values in the dataset. (Priority 2: usage allowed, limited human intelligibility)
+	Priority 2: 4 warning(s)
+
+Priority 1 - heavy impact expected:
+	* [DUPLICATES - DUPLICATE COLUMNS] Found 1 columns with exactly the same feature values as other columns.
+Priority 2 - usage allowed, limited human intelligibility:
+	* [DATA RELATIONS - HIGH COLLINEARITY - NUMERICAL] Found 3 numerical variables with high Variance Inflation Factor (VIF>5.0). The variables listed in results are highly collinear with other variables in the dataset. These will make model explainability harder and potentially give way to issues like overfitting. Depending on your end goal you might want to remove the highest VIF variables.
+	* [ERRONEOUS DATA - PREDEFINED ERRONEOUS DATA] Found 1960 ED values in the dataset.
+	* [DATA RELATIONS - HIGH COLLINEARITY - CATEGORICAL] Found 10 categorical variables with significant collinearity (p-value < 0.05). The variables listed in results are highly collinear with other variables in the dataset and sorted descending according to propensity. These will make model explainability harder and potentially give way to issues like overfitting. Depending on your end goal you might want to remove variables following the provided order.
+	* [DUPLICATES - EXACT DUPLICATES] Found 3 instances with exact duplicate feature values.
+```
+
+
+On top of the summary, you can retrieve a list of detected warnings for detailed inspection.
+```python
+# retrieve a list of data quality warnings 
+warnings = dq.get_warnings()
 ```
 # Examples
 

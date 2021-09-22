@@ -168,7 +168,8 @@ failed expectations.".format(
         return (expectation_level_report, {idx: expectations_summary[idx] for idx in expectation_level_report.index})
 
     def evaluate(self, results_json_path: str, df: pd.DataFrame = None, error_tol: int = 0,
-                rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75) -> dict:
+                rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75,
+                summary: bool = True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
 
         Args:
@@ -177,6 +178,7 @@ failed expectations.".format(
             error_tol (int): Defines how many failed expectations are tolerated.
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol.
             minimum_coverage (float): Minimum expected fraction of DataFrame columns covered by the expectation suite.
+            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
         """
         df = df if isinstance(df, pd.DataFrame) else None
         results = {}
@@ -191,4 +193,7 @@ failed expectations.".format(
             self._logger.error("A valid DataFrame was not passed, skipping coverage fraction test.")
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
+        self.__clean_warnings()
+        if summary:
+            self._report()
         return results

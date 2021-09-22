@@ -71,7 +71,7 @@ class BiasFairness(QualityEngine):
         """
         drop_features = self.sensitive_features + [self.label] # features to remove in prediction
 
-        performances = pd.Series(index=self.sensitive_features)
+        performances = pd.Series(index=self.sensitive_features, dtype=str)
         for feat in performances.index:
             data = self.df.drop(columns=[x for x in drop_features if x != feat]) # drop all except target
             performances[feat] = baseline_performance(df=data, label=feat, adjusted_metric=adjusted_metric)

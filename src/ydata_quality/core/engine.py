@@ -117,7 +117,7 @@ class QualityEngine(ABC):
         "List of individual tests available for the data quality checks."
         return self._tests
 
-    def report(self):
+    def _report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
         self.__clean_warnings()
         if not self._warnings:
@@ -133,8 +133,12 @@ class QualityEngine(ABC):
                     print(warn_list[0].priority)
                 print(*(f"\t{warn}" for warn in warn_list), sep='\n')
 
-    def evaluate(self):
-        "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
+    def evaluate(self, summary: bool = True):
+        """Runs all the individual tests available within the same suite. Returns a dict of (name: results).
+
+        Arguments:
+            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+        """
         self._warnings = list() # reset the warnings
         results = {}
         for test in self.tests:
@@ -143,4 +147,6 @@ class QualityEngine(ABC):
             except Exception as exc: # print a Warning and log the message
                 self._logger.warning('Skipping %s due to failure during computation. See results folder of this test for further details.', test)
                 results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
+        if summary:
+            self._report()
         return results

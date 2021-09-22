@@ -51,7 +51,7 @@ class DataRelationsDetector(QualityEngine):
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
-    def evaluate(self, df: pd.DataFrame, dtypes: Optional[dict] = None, label: str=None, corr_th: float=0.8,  vif_th: float=5, p_th: float=0.05, plot: bool=True) -> dict:
+    def evaluate(self, df: pd.DataFrame, dtypes: Optional[dict] = None, label: str=None, corr_th: float=0.8,  vif_th: float=5, p_th: float=0.05, plot: bool=True, summary=True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
         Note, we perform standard normalization of numerical features in order to unbias VIF and partial correlation methods.
         This bias correction produces results equivalent to adding a constant feature to the dataset.
@@ -65,10 +65,11 @@ class DataRelationsDetector(QualityEngine):
             vif_th (float): Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
             p_th (float): Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
+            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
-        df = standard_normalize(df, dtypes)
+        df = standard_normalize(df, self.dtypes)
         results = {}
         corr_mat, _ = correlation_matrix(df, self.dtypes, True)
         p_corr_mat = partial_correlation_matrix(corr_mat)
@@ -85,6 +86,9 @@ class DataRelationsDetector(QualityEngine):
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
+        self.__clean_warnings()
+        if summary:
+            self._report()
         return results
 
     def _confounder_detection(self, corr_mat: pd.DataFrame, par_corr_mat: pd.DataFrame, corr_th: float) -> List[Tuple[str, str]]:
