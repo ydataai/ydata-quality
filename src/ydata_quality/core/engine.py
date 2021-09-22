@@ -8,7 +8,7 @@ from typing import Optional
 import pandas as pd
 from numpy import random
 
-from ydata_quality.core.warnings import Priority, QualityWarning
+from ydata_quality.core.warnings import Priority, QualityWarning, WarningStyling
 from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
 from ydata_quality.utils.logger import get_logger, NAME
 
@@ -121,14 +121,17 @@ class QualityEngine(ABC):
         "Prints a report containing all the warnings detected during the data quality analysis."
         self.__clean_warnings()
         if not self._warnings:
-            self._logger.info('No warnings found.')
+            print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')
         else:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
-            print('Warnings count by priority:')
-            print(*(f"\tPriority {prio}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print('List of warnings sorted by priority:')
-            print(*(f"\t{warn}" for warn in self._warnings), sep='\n')
+            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
+            for warn_list in warns:
+                if len(warn_list)>0:
+                    print(warn_list[0].priority)
+                print(*(f"\t{warn}" for warn in warn_list), sep='\n')
 
     def evaluate(self):
         "Runs all the indidividual tests available within the same suite. Returns a dict of (name: results)."
