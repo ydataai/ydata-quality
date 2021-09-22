@@ -1,4 +1,4 @@
-# ydata-quality
+# YData Quality
 
 ydata_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
 
@@ -79,3 +79,6 @@ For support in using this library, please join the #help Slack channel. The Slac
 # License
 [GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
 
+# About 👯‍♂️
+
+With ❤️   from [YData](https://ydata.ai) [Development team](mailto://developers@ydata.ai)
