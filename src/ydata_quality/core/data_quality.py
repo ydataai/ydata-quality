@@ -15,6 +15,7 @@ from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
 from ydata_quality.data_relations import DataRelationsDetector
+from ydata_quality.utils.logger import get_logger, NAME
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -37,8 +38,8 @@ class DataQuality:
                     corr_th: float = 0.8,
                     vif_th: float = 5,
                     p_th: float = 0.05,
-                    plot: bool = True
-                    ):
+                    plot: bool = True,
+                    severity: str= 'ERROR'):
         """
         Engines:
         - Duplicates
@@ -55,7 +56,7 @@ class DataQuality:
             label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
-                Set to None for fully random behaviour, no reproducibility.
+                Set to None for fully random behavior, no reproducibility.
             entities: [DUPLICATES] entities relevant for duplicate analysis.
             is_close: [DUPLICATES] Pass True to use numpy.isclose instead of pandas.equals in column comparison.
             ed_extensions: [ERRONEOUS DATA] A list of user provided erroneous data values to append to defaults.
@@ -71,19 +72,22 @@ class DataQuality:
             vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
             p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
+            severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
         #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
+        self._logger = get_logger(NAME, level=severity)
         self._random_state = random_state
+
         self._engines_legacy = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close),
-            'missings': MissingsProfiler(df=df, target=label, random_state=self.random_state),
-            'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
-            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
+            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close, severity=severity),
+            'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state, severity=severity),
+            'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions, severity=severity),
+            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state, severity=severity)
         }
 
-        self._engines_new = {'data-relations': DataRelationsDetector()}
+        self._engines_new = {'data-relations': DataRelationsDetector(severity=severity)}
         self._eval_args = { # Argument lists for different engines
         # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
         # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
@@ -94,18 +98,20 @@ class DataQuality:
 
         # Engines based on mandatory arguments
         if label is not None:
-            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
+            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label,
+                                                               random_state=self.random_state, severity=severity)
         else:
-            print('Label is not defined. Skipping LABELLING engine.')
+            self._logger.warning('Label is not defined. Skipping LABELLING engine.')
         if len(sensitive_features)>0:
             self._engines_legacy['bias&fairness'] = BiasFairness(df=df, sensitive_features=sensitive_features,
-                                                                 label=label, random_state=self.random_state)
+                                                                 label=label, random_state=self.random_state,
+                                                                 severity=severity)
         else:
-            print('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
+            self._logger.warning('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
         if results_json_path is not None:
-            self._engines_new['expectations'] = DataExpectationsReporter()
+            self._engines_new['expectations'] = DataExpectationsReporter(severity=severity)
         else:
-            print('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
+            self._logger.warning('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
 
 
     def __clean_warnings(self):
@@ -140,7 +146,7 @@ class DataQuality:
         if new_state==None or (isinstance(new_state, int) and new_state>=0):
             self._random_state = new_state
         else:
-            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
+            self._logger.warning('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
             self._random_state = None
 
     def __store_warnings(self):

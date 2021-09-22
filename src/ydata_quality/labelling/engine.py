@@ -14,20 +14,29 @@ from ydata_quality.utils.modelling import (GMM_clustering, estimate_centroid,
                                            standard_transform)
 
 
-def LabelInspector(df, label, random_state: Optional[int]=None):
-    """Instantiate this label inspector class.
-    Runs a label type inference to instantiate the correct label inspector."""
+def LabelInspector(df, label, random_state: Optional[int]=None, severity:Optional[str]=None):
+    """Runs a label type inference to instantiate the correct label inspector.
+    Instantiate this label inspector method to create a Label Inspector.
+
+    Arguments:
+            df (pd.DataFrame): reference DataFrame used to run the label analysis.
+            label (str, optional): target feature to be predicted.
+            random_state (int, optional): Integer seed for random reproducibility. Default is None.
+                Set to None for fully random behavior, no reproducibility.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels
+                [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+        """
     label_dtype = infer_dtypes(df[label])[label]  # Label column dtype inferral
     if label_dtype == 'categorical':
-        return CategoricalLabelInspector(df, label, random_state=random_state)
+        return CategoricalLabelInspector(df, label, random_state=random_state, severity=severity)
     else:
-        return NumericalLabelInspector(df, label, random_state=random_state)
+        return NumericalLabelInspector(df, label, random_state=random_state, severity=severity)
 
 class SharedLabelInspector(QualityEngine):
     """Shared structure for Numerical/Categorical Label Inspector"""
 
-    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]=None):
-        super().__init__(df=df, label=label, random_state=random_state)
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]=None, severity:Optional[str]=None):
+        super().__init__(df=df, label=label, random_state=random_state, severity=severity)
         self._tdf = None
 
     @property
@@ -61,7 +70,7 @@ class SharedLabelInspector(QualityEngine):
                     description=f"Found {len(missing_labels)} instances with missing labels."
             ))
         else:
-            print("[MISSING LABELS] No missing labels were found.")
+            self._logger.info("No missing labels were found.")
             missing_labels = None
         return missing_labels
 
@@ -70,8 +79,8 @@ class CategoricalLabelInspector(SharedLabelInspector):
     """Engine for running analysis on categorical labels.
     Ordinal labels can be handled if passed as categorical."""
 
-    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int]):
-        super().__init__(df=df, label=label, random_state=random_state)
+    def __init__(self, df: pd.DataFrame, label: str, random_state: Optional[int], severity:Optional[str]=None):
+        super().__init__(df=df, label=label, random_state=random_state, severity = severity)
         self._centroids = None
         self._tests = ["missing_labels", "few_labels", "unbalanced_classes",
         "one_vs_rest_performance", "outlier_detection"]
@@ -112,7 +121,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
                     "Found {} labels with {} or less records.".format(len(few_labels), count_th)
             ))
         else:
-            print("[FEW LABELS] No labels with {} or less records were found.".format(count_th))
+            self._logger.info("No labels with %d or less records were found.", count_th)
             few_labels = None
         return few_labels
 
@@ -149,7 +158,7 @@ Classes {} are over-represented each having more than {:.1%} of total instances"
     set(data['Over-represented'].keys()), fair_share+adj_slack)
     ))
         else:
-            print("[UNBALANCED CLASSES] No unbalanced classes were found.")
+            self._logger.info("No unbalanced classes were found.")
             return None
         return label_excess.index
 
@@ -235,8 +244,8 @@ deviations of intra-cluster distances to the respective centroids was used to de
 class NumericalLabelInspector(SharedLabelInspector):
     "Engine for running analyis on numerical labels."
 
-    def __init__(self, df: pd.DataFrame, label: str, random_state):
-        super().__init__(df=df, label=label, random_state=random_state)
+    def __init__(self, df: pd.DataFrame, label: str, random_state, severity:Optional[str]=None):
+        super().__init__(df=df, label=label, random_state=random_state, severity = severity)
         self._tests = ["missing_labels", "test_normality", "outlier_detection"]
 
     def _GMM_clusters(self, max_clusters):
@@ -299,9 +308,9 @@ define the potential outliers.".format(total_outliers, coverage_string, th)
         test_result, transform, pstat = normality_test(vals, p_th=p_th)
         if test_result:
             if transform is None:
-                print("[TEST NORMALITY] The label values appears to be normally distributed.")
+                self._logger.info("The label values appears to be normally distributed.")
             else:
-                print("[TEST NORMALITY] The {} transform appears to be able to normalize the label values.".format(transform))
+                self._logger.info("The %s transform appears to be able to normalize the label values.", transform)
                 self.store_warning(
                     QualityWarning(
                         test='Test normality', category='Labels', priority=2, data=vals,
@@ -310,7 +319,7 @@ Using the {} transform provided a positive normality test with a p-value statist
     transform, pstat)
                 ))
         else:
-            print("[TEST NORMALITY] It was not possible to normalize the label values. See the warning message for additional context.")
+            self._logger.warning("It was not possible to normalize the label values. See the data quality warning message for additional context.")
             self.store_warning(
                 QualityWarning(
                     test='Test normality', category='Labels', priority=1, data=vals,

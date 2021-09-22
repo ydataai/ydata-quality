@@ -8,6 +8,7 @@ import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.auxiliary import test_load_json_path
+from ydata_quality.utils.logger import get_logger, NAME
 
 
 class DataExpectationsReporter(QualityEngine):
@@ -15,8 +16,10 @@ class DataExpectationsReporter(QualityEngine):
     Supports standard Great Expectations json reports from expectation suite validation runs.
     """
 
-    def __init__(self):
-        return  # Override the base class init method
+    def __init__(self, severity: Optional[str]= None):  # Overrides base class init
+        "severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"
+        self._warnings = [] # reset the warnings to avoid duplicates
+        self._logger = get_logger(NAME, level=severity)
 
     @property
     def tests(self):
@@ -175,7 +178,6 @@ failed expectations.".format(
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol.
             minimum_coverage (float): Minimum expected fraction of DataFrame columns covered by the expectation suite.
         """
-        self._warnings = list() # reset the warnings to avoid duplicates
         df = df if isinstance(df, pd.DataFrame) else None
         results = {}
         if df is not None:
@@ -183,10 +185,10 @@ failed expectations.".format(
                 results['Coverage Fraction'] = self._coverage_fraction(
                     results_json_path, df, minimum_coverage=minimum_coverage)
             except AssertionError as exc: # print a Warning and log the message
-                print("['DATA EXPECTATIONS'] Canceled Data Expectations engine execution due to dataset-expectation suite mismatch.")
+                self._logger.critical("Canceled Data Expectations engine execution due to dataset-expectation suite mismatch.")
                 return "[ERROR] Canceled computation. Original exception: "+f"{exc}"
         else:
-            print("A valid DataFrame was not passed, skipping coverage fraction test.")
+            self._logger.error("A valid DataFrame was not passed, skipping coverage fraction test.")
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
         return results

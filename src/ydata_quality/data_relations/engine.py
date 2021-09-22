@@ -9,13 +9,16 @@ import pandas as pd
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.correlations import correlation_matrix, partial_correlation_matrix, correlation_plotter, vif_collinearity, chi2_collinearity
 from ydata_quality.utils.auxiliary import infer_dtypes, standard_normalize
+from ydata_quality.utils.logger import get_logger, NAME
 
 class DataRelationsDetector(QualityEngine):
     """Main class to run data relations analysis.
     """
 
-    def __init__(self):
-        return  # Override the base class init method
+    def __init__(self, severity: Optional[str] = None):  # Overrides base class init
+        "severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"
+        self._warnings = [] # reset the warnings to avoid duplicates
+        self._logger = get_logger(NAME, level=severity)
 
     @property
     def tests(self):
@@ -29,12 +32,16 @@ class DataRelationsDetector(QualityEngine):
     def dtypes(self, df_dtypes: Tuple[pd.DataFrame, dict]):
         df, dtypes = df_dtypes
         if not isinstance(dtypes, dict):
-            raise ValueError("Property 'dtypes' should be a dictionary.")
-        assert all(col in df.columns for col in dtypes), "All dtypes keys \
-            must be columns in the dataset."
+            self._logger.warning("Property 'dtypes' should be a dictionary. Defaulting to all column dtypes inference.")
+            dtypes = {}
+        cols_not_in_df = [col for col in dtypes if col not in df.columns]
+        if len(cols_not_in_df) > 0:
+            self._logger.warning("Passed dtypes keys %s are not columns of the provided dataset.", cols_not_in_df)
         supported_dtypes = ['numerical', 'categorical']
-        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes\
-             must be in the supported broad dtype list: {}.".format(supported_dtypes)
+        wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
+        if len(wrong_dtypes)>0:
+            self._logger.warning("Columns %s of dtypes where not defined with a supported dtype and will be inferred.", wrong_dtypes)
+        dtypes = {key:val for key, val in dtypes.items() if key not in cols_not_in_df+wrong_dtypes}
         df_col_set = set(df.columns)
         dtypes_col_set = set(dtypes.keys())
         missing_cols = df_col_set.difference(dtypes_col_set)
@@ -60,9 +67,6 @@ class DataRelationsDetector(QualityEngine):
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
-        self._warnings = [] # reset the warnings to avoid duplicates
-        if not dtypes:
-            dtypes = {}
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
         df = standard_normalize(df, dtypes)
         results = {}
@@ -77,7 +81,7 @@ class DataRelationsDetector(QualityEngine):
             results['Confounders'] = self._confounder_detection(corr_mat, p_corr_mat, corr_th)
             results['Colliders'] = self._collider_detection(corr_mat, p_corr_mat, corr_th)
         else:
-            print('[DATA RELATIONS] The partial correlation matrix is not computable for this dataset. Skipping potential confounder and collider detection tests.')
+            self._logger.warning('The partial correlation matrix is not computable for this dataset. Skipping potential confounder and collider detection tests.')
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)

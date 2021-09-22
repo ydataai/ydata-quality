@@ -22,14 +22,16 @@ class BiasFairness(QualityEngine):
     """
 
     def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None,
-        random_state: Optional[int] = None):
+        random_state: Optional[int] = None, severity: Optional[str]= None):
         """
         Args
             df (pd.DataFrame): reference DataFrame used to run the analysis
             sensitive_features (List[str]): features deemed as sensitive attributes
             label (str, optional): target feature to be predicted
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels
+                [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        super().__init__(df=df, label=label, random_state=random_state)
+        super().__init__(df=df, label=label, random_state=random_state, severity=severity)
         self._sensitive_features = sensitive_features
         self._tests = ["performance_discrimination", "proxy_identification",
                         "sensitive_predictability", "sensitive_representativity"]
@@ -72,7 +74,7 @@ class BiasFairness(QualityEngine):
         performances = pd.Series(index=self.sensitive_features)
         for feat in performances.index:
             data = self.df.drop(columns=[x for x in drop_features if x != feat]) # drop all except target
-            performances[feat] = baseline_performance(df=data, target=feat, adjusted_metric=adjusted_metric)
+            performances[feat] = baseline_performance(df=data, label=feat, adjusted_metric=adjusted_metric)
 
         high_perfs = performances[performances>th]
         if len(high_perfs) > 0:
@@ -93,12 +95,11 @@ class BiasFairness(QualityEngine):
         """
         # TODO: support error rate parity metrics (e.g. false positive rate, positive rate)
         if self.label is None:
-            print('[BIAS&FAIRNESS] Argument "label" must be defined to calculate performance discrimination metric. Skipping test.')
-            pass
+            self._logger.warning('Argument "label" must be defined to calculate performance discrimination metric. Skipping test.')
 
         res = {}
         for feat in self.sensitive_features:
-            res[feat] = pd.Series(performance_per_feature_values(df=self.df, feature=feat, target=self.label))
+            res[feat] = pd.Series(performance_per_feature_values(df=self.df, feature=feat, label=self.label))
         return res
 
 

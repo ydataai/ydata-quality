@@ -13,8 +13,14 @@ from ydata_quality.utils.auxiliary import find_duplicate_columns
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False):
-        super().__init__(df=df)
+    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False, severity: Optional[str]= None):
+        """
+        Arguments:
+            df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
+            entities (List[Union[str, List[str]]]): entities relevant for duplicate analysis. Passing lists allows composed entities of multiple columns.
+            is_close (bool): Pass True to use numpy.isclose instead of pandas.equals in column comparison.
+            severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"""
+        super().__init__(df=df, severity=severity)
         self._entities = entities
         self._tests = ["exact_duplicates", "entity_duplicates", "duplicate_columns"]
         self._is_close = is_close
@@ -58,7 +64,7 @@ class DuplicateChecker(QualityEngine):
                     description=f"Found {len(dups)} instances with exact duplicate feature values."
             ))
         else:
-            print("[EXACT DUPLICATES] No exact duplicates were found.")
+            self._logger.info("No exact duplicates were found.")
             dups = None
         return dups
 
@@ -92,7 +98,7 @@ class DuplicateChecker(QualityEngine):
                     ent_dups.setdefault(entity_key, {})[val] = dups[(dups[entity].values==val).all(axis=1)]
         else: # if entity is not specified
             if len(self.entities) == 0:
-                print("[ENTITY DUPLICATES] There are no entities defined to run the analysis. Skipping the test.")
+                self._logger.warning("There are no entities defined to run the analysis. Skipping the test.")
                 return None
             else:
                 for col in self.entities:
@@ -111,6 +117,6 @@ class DuplicateChecker(QualityEngine):
                 )
             )
         else:
-            print("[DUPLICATE COLUMNS] No duplicate columns were found.")
+            self._logger.info("No duplicate columns were found.")
             dups = None
         return dups

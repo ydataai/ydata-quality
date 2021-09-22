@@ -10,15 +10,17 @@ from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning, WarningStyling
 from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
+from ydata_quality.utils.logger import get_logger, NAME
 
 
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None):
+    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None, severity: Optional[str]= None):
         self._df = df
         self._df_type = None
         self._warnings = list()
+        self._logger = get_logger(NAME, level=severity)
         self._tests = []
         self._label = label
         self._dtypes = dtypes
@@ -36,9 +38,8 @@ class QualityEngine(ABC):
 
     @label.setter
     def label(self, label: str):
-        if not isinstance(label, str):
-            raise ValueError("Property 'label' should be a string.")
-        assert label in self.df.columns, "Given label should exist as a DataFrame column."
+        assert isinstance(label, str), "Property 'label' should be a string."
+        assert label in self.df.columns, "Provided label %s does not exist as a DataFrame column." % label
         self._label = label
 
     @property
@@ -51,11 +52,16 @@ class QualityEngine(ABC):
     @dtypes.setter
     def dtypes(self, dtypes: dict):
         if not isinstance(dtypes, dict):
-            raise ValueError("Property 'dtypes' should be a dictionary.")
-        assert all(col in self.df.columns for col in dtypes), "All dtypes keys must be columns in the dataset."
+            self._logger.warning("Property 'dtypes' should be a dictionary. Defaulting to all column dtypes inference.")
+            dtypes = {}
+        cols_not_in_df = [col for col in dtypes if col not in self.df.columns]
+        if len(cols_not_in_df) > 0:
+            self._logger.warning("Passed dtypes keys %s are not columns of the provided dataset.", cols_not_in_df)
         supported_dtypes = ['numerical', 'categorical']
-        assert all(dtype in supported_dtypes for dtype in dtypes.values()), "Assigned dtypes must be in the supported \
-broad dtype list: {}.".format(supported_dtypes)
+        wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
+        if len(wrong_dtypes>0):
+            self._logger.warning("Columns %s of dtypes where not defined with a supported dtype and will be inferred.", wrong_dtypes)
+        dtypes = {key:val for key, val in dtypes.items() if key not in cols_not_in_df+wrong_dtypes}
         df_col_set = set(self.df.columns)
         dtypes_col_set = set(dtypes.keys())
         missing_cols = df_col_set.difference(dtypes_col_set)
@@ -84,7 +90,7 @@ broad dtype list: {}.".format(supported_dtypes)
             self._random_state = new_state
             random.seed(self.random_state)
         except:
-            print('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
+            self._logger.warning('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
             self._random_state = None
 
     def __clean_warnings(self):
@@ -135,6 +141,6 @@ broad dtype list: {}.".format(supported_dtypes)
             try: # if anything fails
                 results[test] = getattr(self, test)()
             except Exception as exc: # print a Warning and log the message
-                print(f'WARNING: Skipping test {test} due to failure during computation.')
+                self._logger.warning('Skipping %s due to failure during computation. See results folder of this test for further details.', test)
                 results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
         return results

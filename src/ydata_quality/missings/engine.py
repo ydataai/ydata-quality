@@ -15,26 +15,17 @@ from ydata_quality.utils.modelling import (baseline_performance,
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
-    def __init__(self, df: pd.DataFrame, target: Optional[str] = None, random_state: Optional[int]=None):
+    def __init__(self, df: pd.DataFrame, label: Optional[str] = None, random_state: Optional[int]=None, severity: Optional[str]= None):
         """
         Args:
             df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
-            target (str, optional): target
+            label (str, optional): target feature to be predicted.
+            random_state (int, optional): Integer seed for random reproducibility. Default is None.
+                Set to None for fully random behavior, no reproducibility.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        #TODO: Rename 'target' argument to 'label' standard of QualityEngine
-        super().__init__(df=df, random_state=random_state)
-        self._target = target
+        super().__init__(df=df, random_state=random_state, label=label, severity=severity)
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
-
-    @property
-    def target(self):
-        return self._target
-
-    @target.setter
-    def target(self, target: str):
-        if target not in self.df.columns:
-            raise Exception(f'Provided target ({target}) must belong to the dataframe columns ({list(self.df.columns)}).')
-        self._target = target
 
     def _get_null_cols(self, col: Optional[str] = None) -> List[str]:
         "Returns list of given column or all columns with null values in DataFrame if None."
@@ -43,9 +34,9 @@ class MissingsProfiler(QualityEngine):
             else [col]
 
     def __get_prediction_type(self):
-        "Decide whether to use classification or regression setting, based on target."
+        "Decide whether to use classification or regression setting, based on label."
         # TODO: Improve prediction type guesstimate based on alternative heuristics (e.g. dtypes, value_counts)
-        if len(set(self.df[self.target])) == 2: # binary classification
+        if len(set(self.df[self.label])) == 2: # binary classification
             return 'classification'
         else:
             return 'regression'
@@ -128,21 +119,20 @@ class MissingsProfiler(QualityEngine):
         # Parse the columns for which to calculate the drop in performance on missings
         cols = self._get_null_cols(col)
 
-        # Guarantee that target is defined. Otherwise skip
-        if self.target is None:
-            print('Argument "target" must be defined to calculate performance_drop metric. Skipping test.')
-            pass
+        # Guarantee that label is defined. Otherwise skip
+        if self.label is None:
+            self._logger.warning('Argument "label" must be defined to calculate performance_drop metric. Skipping test.')
 
         # Guesstimate the prediction type
         prediction_type = self.__get_prediction_type()
         results = pd.DataFrame({
-            c: performance_per_missing_value(df=self.df, feature=c, target=self.target, task=prediction_type)
+            c: performance_per_missing_value(df=self.df, feature=c, label=self.label, task=prediction_type)
             for c in cols
         })
 
         # Normalize the results with a baseline performance.
         if normalize:
-            baseline = baseline_performance(df=self.df, target=self.target, task=prediction_type)
+            baseline = baseline_performance(df=self.df, label=self.label, task=prediction_type)
             results = results / baseline
 
         return results
