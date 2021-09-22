@@ -24,8 +24,7 @@ class MissingsProfiler(QualityEngine):
                 Set to None for fully random behavior, no reproducibility.
             severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        super().__init__(df=df, random_state=random_state, severity=severity)
-        self._label = label
+        super().__init__(df=df, random_state=random_state, label=label, severity=severity)
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
 
     def _get_null_cols(self, col: Optional[str] = None) -> List[str]:
