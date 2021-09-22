@@ -45,6 +45,7 @@ test: ### Runs all the project tests
 
 package: clean ### Runs the project setup
 	echo __version__ = \"$(version)\" > src/ydata_quality/__version__.py
+	echo "$(version)" > VERSION
 	$(PYTHON) setup.py sdist bdist_wheel
 
 install: ### Installs required dependencies
