@@ -154,7 +154,7 @@ class MissingsProfiler(QualityEngine):
         # Calculate the performance for each feature
         results = pd.Series(
                     {c: predict_missingness(df=self.df, feature=c) for c in cols},
-                    name='predict_missings'
+                    name='predict_missings', dtype=object
                 )
 
         # Subset for performances above threshold

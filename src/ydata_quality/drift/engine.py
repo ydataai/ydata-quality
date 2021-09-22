@@ -196,7 +196,7 @@ class DriftAnalyser(QualityEngine):
             holdout.drop(self.label, axis=1, inplace=True)
         leftover_fractions = np.arange(0.2, 1.2, 0.2)
         perc_index = ["{0:.0%}".format(fraction) for fraction in leftover_fractions]
-        control_metric = pd.Series(index=perc_index)
+        control_metric = pd.Series(index=perc_index, dtype=str)
         bonferroni_p = p_thresh/len(covariates.columns)  # Bonferroni correction
         all_p_vals = pd.DataFrame(index=perc_index, columns=covariates.columns)
         for idx, fraction in enumerate(leftover_fractions):
