@@ -169,6 +169,7 @@ class DataQuality:
 
     def _report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
+        self.__clean_warnings()
         if not self._warnings:
             print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')
         else:

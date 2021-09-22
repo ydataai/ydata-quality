@@ -193,6 +193,7 @@ failed expectations.".format(
             self._logger.error("A valid DataFrame was not passed, skipping coverage fraction test.")
         results['Overall Assessment'] = self._overall_assessment(results_json_path, error_tol, rel_error_tol)
         results['Expectation Level Assessment'] = self._expectation_level_assessment(results_json_path)
+        self.__clean_warnings()
         if summary:
             self._report()
         return results

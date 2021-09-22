@@ -86,6 +86,7 @@ class DataRelationsDetector(QualityEngine):
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
+        self.__clean_warnings()
         if summary:
             self._report()
         return results
