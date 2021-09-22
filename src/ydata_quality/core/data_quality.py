@@ -38,7 +38,7 @@ class DataQuality:
                     corr_th: float = 0.8,
                     vif_th: float = 5,
                     p_th: float = 0.05,
-                    plot: bool = True,
+                    plot: bool = False,
                     severity: str= 'ERROR'):
         """
         Engines:
