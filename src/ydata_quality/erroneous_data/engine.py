@@ -13,13 +13,14 @@ from ydata_quality.utils.enum import DataFrameType
 class ErroneousDataIdentifier(QualityEngine):
     "Engine for running analysis on erroneous data."
 
-    def __init__(self, df: pd.DataFrame, ed_extensions: Optional[list]=[]):
+    def __init__(self, df: pd.DataFrame, ed_extensions: Optional[list]=[], severity:Optional[str]=None):
         """
         Args:
             df (pd.DataFrame): DataFrame used to run the erroneous data analysis.
             ed_extensions: A list of user provided erroneous data values to append to defaults.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        super().__init__(df=df)
+        super().__init__(df=df, severity=severity)
         if self.df_type == DataFrameType.TIMESERIES:
             self._tests = ["flatlines", "predefined_erroneous_data"]
         else:

@@ -2,8 +2,6 @@
 Implementation of main class for Data Quality checks.
 """
 from collections import Counter
-from logging import _nameToLevel
-import os
 from typing import Callable, List, Optional, Union
 
 import pandas as pd
@@ -17,7 +15,7 @@ from ydata_quality.erroneous_data import ErroneousDataIdentifier
 from ydata_quality.data_expectations import DataExpectationsReporter
 from ydata_quality.bias_fairness import BiasFairness
 from ydata_quality.data_relations import DataRelationsDetector
-from ydata_quality.utils.logger import create_logger, NAME, STREAM
+from ydata_quality.utils.logger import get_logger, NAME
 
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
@@ -41,7 +39,7 @@ class DataQuality:
                     vif_th: float = 5,
                     p_th: float = 0.05,
                     plot: bool = True,
-                    severity: Optional[str]= 'ERROR'):
+                    severity: str= 'ERROR'):
         """
         Engines:
         - Duplicates
@@ -74,25 +72,22 @@ class DataQuality:
             vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
             p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
-            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+            severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
         #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
         self._warnings = list()
-        if severity in _nameToLevel:
-            os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
-        self._logger = create_logger(NAME, STREAM, log_level)
+        self._logger = get_logger(NAME, level=severity)
         self._random_state = random_state
 
         self._engines_legacy = { # Default list of engines
-            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close),
-            'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state),
-            'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions),
-            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state)
+            'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close, severity=severity),
+            'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state, severity=severity),
+            'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions, severity=severity),
+            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state, severity=severity)
         }
 
-        self._engines_new = {'data-relations': DataRelationsDetector()}
+        self._engines_new = {'data-relations': DataRelationsDetector(severity=severity)}
         self._eval_args = { # Argument lists for different engines
         # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
         # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
@@ -103,16 +98,18 @@ class DataQuality:
 
         # Engines based on mandatory arguments
         if label is not None:
-            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label, random_state=self.random_state)
+            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label,
+                                                               random_state=self.random_state, severity=severity)
         else:
             self._logger.warning('Label is not defined. Skipping LABELLING engine.')
         if len(sensitive_features)>0:
             self._engines_legacy['bias&fairness'] = BiasFairness(df=df, sensitive_features=sensitive_features,
-                                                                 label=label, random_state=self.random_state)
+                                                                 label=label, random_state=self.random_state,
+                                                                 severity=severity)
         else:
             self._logger.warning('Sensitive features not defined. Skipping BIAS & FAIRNESS engine.')
         if results_json_path is not None:
-            self._engines_new['expectations'] = DataExpectationsReporter()
+            self._engines_new['expectations'] = DataExpectationsReporter(severity=severity)
         else:
             self._logger.warning('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
 

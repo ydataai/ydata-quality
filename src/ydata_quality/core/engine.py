@@ -4,15 +4,13 @@ Implementation of abstract class for Data Quality engines.
 from abc import ABC
 from collections import Counter
 from typing import Optional
-import os
-from logging import _nameToLevel
 
 import pandas as pd
 from numpy import random
 
 from ydata_quality.core.warnings import Priority, QualityWarning
 from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
-from ydata_quality.utils.logger import create_logger, NAME, STREAM
+from ydata_quality.utils.logger import get_logger, NAME
 
 
 class QualityEngine(ABC):
@@ -22,10 +20,7 @@ class QualityEngine(ABC):
         self._df = df
         self._df_type = None
         self._warnings = list()
-        if severity in _nameToLevel:
-            os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
-        self._logger = create_logger(NAME, STREAM, log_level)
+        self._logger = get_logger(NAME, level=severity)
         self._tests = []
         self._label = label
         self._dtypes = dtypes

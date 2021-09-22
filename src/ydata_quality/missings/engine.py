@@ -15,15 +15,16 @@ from ydata_quality.utils.modelling import (baseline_performance,
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
-    def __init__(self, df: pd.DataFrame, label: Optional[str] = None, random_state: Optional[int]=None):
+    def __init__(self, df: pd.DataFrame, label: Optional[str] = None, random_state: Optional[int]=None, severity: Optional[str]= None):
         """
         Args:
             df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
             label (str, optional): target feature to be predicted.
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behavior, no reproducibility.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        super().__init__(df=df, random_state=random_state)
+        super().__init__(df=df, random_state=random_state, severity=severity)
         self._label = label
         self._tests = ["nulls_higher_than", "high_missing_correlations", "predict_missings"]
 

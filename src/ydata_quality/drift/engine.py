@@ -70,7 +70,7 @@ class DriftAnalyser(QualityEngine):
 
     def __init__(self, ref: pd.DataFrame, sample: Optional[pd.DataFrame] = None,
         label: Optional[str] = None, model: Optional[Union[Callable, ModelWrapper]] = None, holdout: float = 0.2,
-        random_state: Optional[int] = None):
+        random_state: Optional[int] = None, severity:Optional[str]=None):
         """
         Initializes the engine properties and lists tests for automated evaluation.
         Args:
@@ -84,8 +84,9 @@ class DriftAnalyser(QualityEngine):
             holdout (float): Fraction to be kept as holdout for drift test.
             random_state (Optional, int): Seed used to guarantee reproducibility of the random sample splits.
                 Pass None for no reproducibility.
+            severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        super().__init__(df=ref, label=label, random_state=random_state)
+        super().__init__(df=ref, label=label, random_state=random_state, severity=severity)
         self.sample = sample
         self.model = model
         self._holdout, self._remaining_data = random_split(ref, holdout, random_state=self.random_state)

@@ -1,16 +1,14 @@
 """
 Implementation of DataExpectationsReporter engine to run data expectations validation analysis.
 """
-import os
 from typing import Optional
-from logging import _nameToLevel
 
 import numpy as np
 import pandas as pd
 
 from ydata_quality.core import QualityEngine, QualityWarning
 from ydata_quality.utils.auxiliary import test_load_json_path
-from ydata_quality.utils.logger import create_logger, NAME, STREAM
+from ydata_quality.utils.logger import get_logger, NAME
 
 
 class DataExpectationsReporter(QualityEngine):
@@ -21,10 +19,7 @@ class DataExpectationsReporter(QualityEngine):
     def __init__(self, severity: Optional[str]= None):  # Overrides base class init
         "severity (str, optional): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"
         self._warnings = [] # reset the warnings to avoid duplicates
-        if severity in _nameToLevel:
-            os.environ["DQ_LOG_LEVEL"] = severity
-        log_level = os.getenv('DQ_LOG_LEVEL', _nameToLevel['INFO'])
-        self._logger = create_logger(NAME, STREAM, log_level)
+        self._logger = get_logger(NAME, level=severity)
 
     @property
     def tests(self):

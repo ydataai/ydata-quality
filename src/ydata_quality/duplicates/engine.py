@@ -13,13 +13,14 @@ from ydata_quality.utils.auxiliary import find_duplicate_columns
 class DuplicateChecker(QualityEngine):
     "Engine for running analyis on duplicate records."
 
-    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False):
+    def __init__(self, df: pd.DataFrame, entities: List[Union[str, List[str]]] = [], is_close: bool=False, severity: Optional[str]= None):
         """
         Arguments:
             df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
             entities (List[Union[str, List[str]]]): entities relevant for duplicate analysis. Passing lists allows composed entities of multiple columns.
-            is_close (bool): Pass True to use numpy.isclose instead of pandas.equals in column comparison."""
-        super().__init__(df=df)
+            is_close (bool): Pass True to use numpy.isclose instead of pandas.equals in column comparison.
+            severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]"""
+        super().__init__(df=df, severity=severity)
         self._entities = entities
         self._tests = ["exact_duplicates", "entity_duplicates", "duplicate_columns"]
         self._is_close = is_close
