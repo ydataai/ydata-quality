@@ -5,21 +5,27 @@ from abc import ABC
 from collections import Counter
 from typing import Optional
 
-import pandas as pd
 from numpy import random
+from pandas import DataFrame
 
-from ydata_quality.core.warnings import Priority, QualityWarning, WarningStyling
-from ydata_quality.utils.auxiliary import infer_df_type, infer_dtypes
-from ydata_quality.utils.logger import get_logger, NAME
+from .warnings import Priority, QualityWarning, WarningStyling
+from ..utils.auxiliary import infer_df_type, infer_dtypes
+from ..utils.logger import get_logger, NAME
 
 
+# pylint: disable=too-many-instance-attributes
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
 
-    def __init__(self, df: pd.DataFrame, random_state: Optional[int] = None, label: str = None, dtypes: dict = None, severity: Optional[str]= None):
+    def __init__(self,
+                 df: DataFrame,
+                 random_state: Optional[int] = None,
+                 label: str = None,
+                 dtypes: dict = None,
+                 severity: Optional[str] = None):
         self._df = df
         self._df_type = None
-        self._warnings = list()
+        self._warnings = []
         self._logger = get_logger(NAME, level=severity)
         self._tests = []
         self._label = label
@@ -59,9 +65,11 @@ class QualityEngine(ABC):
             self._logger.warning("Passed dtypes keys %s are not columns of the provided dataset.", cols_not_in_df)
         supported_dtypes = ['numerical', 'categorical']
         wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
-        if len(wrong_dtypes>0):
-            self._logger.warning("Columns %s of dtypes where not defined with a supported dtype and will be inferred.", wrong_dtypes)
-        dtypes = {key:val for key, val in dtypes.items() if key not in cols_not_in_df+wrong_dtypes}
+        if len(wrong_dtypes > 0):
+            self._logger.warning(
+                "Columns %s of dtypes where not defined with a supported dtype and will be inferred.",
+                wrong_dtypes)
+        dtypes = {key: val for key, val in dtypes.items() if key not in cols_not_in_df + wrong_dtypes}
         df_col_set = set(self.df.columns)
         dtypes_col_set = set(dtypes.keys())
         missing_cols = df_col_set.difference(dtypes_col_set)
@@ -89,24 +97,25 @@ class QualityEngine(ABC):
         try:
             self._random_state = new_state
             random.seed(self.random_state)
-        except:
-            self._logger.warning('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
+        except BaseException:
+            self._logger.warning(
+                'An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
             self._random_state = None
 
-    def __clean_warnings(self):
+    def _clean_warnings(self):
         """Deduplicates and sorts the list of warnings."""
-        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+        self._warnings = sorted(list(set(self._warnings)))  # Sort unique warnings by priority
 
     def store_warning(self, warning: QualityWarning):
         "Adds a new warning to the internal 'warnings' storage."
         self._warnings.append(warning)
 
     def get_warnings(self,
-                    category: Optional[str] = None,
-                    test: Optional[str] = None,
-                    priority: Optional[Priority] = None):
+                     category: Optional[str] = None,
+                     test: Optional[str] = None,
+                     priority: Optional[Priority] = None):
         "Retrieves warnings filtered by their properties."
-        self.__clean_warnings()
+        self._clean_warnings()
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
@@ -119,17 +128,22 @@ class QualityEngine(ABC):
 
     def _report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        self.__clean_warnings()
+        self._clean_warnings()
         if not self._warnings:
             print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')
         else:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
             print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(
+                *
+                (
+                    f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio,
+                    count in prio_counts.items()),
+                sep='\n')
             warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
             for warn_list in warns:
-                if len(warn_list)>0:
+                if len(warn_list) > 0:
                     print(warn_list[0].priority)
                 print(*(f"\t{warn}" for warn in warn_list), sep='\n')
 
@@ -139,14 +153,18 @@ class QualityEngine(ABC):
         Arguments:
             summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
         """
-        self._warnings = list() # reset the warnings
+        self._warnings = [] # reset the warnings
         results = {}
         for test in self.tests:
-            try: # if anything fails
+            try:  # if anything fails
                 results[test] = getattr(self, test)()
             except Exception as exc: # print a Warning and log the message
-                self._logger.warning('Skipping %s due to failure during computation. See results folder of this test for further details.', test)
+                self._logger.warning(
+                    'Skipping %s due to failure during computation. \
+                        See results folder of this test for further details.', test)
                 results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
+
         if summary:
             self._report()
+
         return results

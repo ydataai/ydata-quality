@@ -4,21 +4,23 @@ Implementation of MissingProfiler engine to run missing value analysis.
 from typing import List, Optional, Union
 
 import numpy as np
-import pandas as pd
+from pandas import DataFrame, Series
 
-from ydata_quality.core import QualityEngine, QualityWarning
-from ydata_quality.utils.modelling import (baseline_performance,
-                                           performance_per_missing_value,
-                                           predict_missingness)
+from ..core import QualityEngine, QualityWarning
+from ..utils.modelling import baseline_performance, performance_per_missing_value, predict_missingness
 
 
 class MissingsProfiler(QualityEngine):
     "Main class to run missing value analysis."
 
-    def __init__(self, df: pd.DataFrame, label: Optional[str] = None, random_state: Optional[int]=None, severity: Optional[str]= None):
+    def __init__(self,
+                 df: DataFrame,
+                 label: Optional[str] = None,
+                 random_state: Optional[int] = None,
+                 severity: Optional[str] = None):
         """
         Args:
-            df (pd.DataFrame): reference DataFrame used to run the missing value analysis.
+            df (DataFrame): reference DataFrame used to run the missing value analysis.
             label (str, optional): target feature to be predicted.
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
                 Set to None for fully random behavior, no reproducibility.
@@ -29,19 +31,17 @@ class MissingsProfiler(QualityEngine):
 
     def _get_null_cols(self, col: Optional[str] = None) -> List[str]:
         "Returns list of given column or all columns with null values in DataFrame if None."
-        return list(self.df.columns[self.null_count(minimal=False)>0]) if col is None \
+        return list(self.df.columns[self.null_count(minimal=False) > 0]) if col is None \
             else col if isinstance(col, list) \
             else [col]
 
     def __get_prediction_type(self):
         "Decide whether to use classification or regression setting, based on label."
         # TODO: Improve prediction type guesstimate based on alternative heuristics (e.g. dtypes, value_counts)
-        if len(set(self.df[self.label])) == 2: # binary classification
-            return 'classification'
-        else:
-            return 'regression'
 
-    def null_count(self, col:  Union[List[str], str, None] = None, normalize=False, minimal=True):
+        return 'classification' if len(set(self.df[self.label])) == 2 else 'regression'
+
+    def null_count(self, col: Union[List[str], str, None] = None, normalize=False, minimal=True):
         """Returns the count of null values.
 
         Args:
@@ -55,7 +55,7 @@ class MissingsProfiler(QualityEngine):
         count = count / len(self.df) if normalize else count
         # subset
         if col is None and minimal:
-            count = count[count>0]
+            count = count[count > 0]
         return count
 
     def nulls_higher_than(self, th=0.2):
@@ -78,7 +78,7 @@ class MissingsProfiler(QualityEngine):
 
         # TODO: Replace standard correlation coefficient by Cramer's V / Theil's U.
         """
-        nulls = self.df.loc[:, self.null_count(minimal=False) > 0] # drop columns without nulls
+        nulls = self.df.loc[:, self.null_count(minimal=False) > 0]  # drop columns without nulls
         return nulls.isnull().corr()
 
     def high_missing_correlations(self, th: float = 0.5):
@@ -86,22 +86,23 @@ class MissingsProfiler(QualityEngine):
 
         corrs = self.missing_correlations().abs()        # compute the absolute correlation
         np.fill_diagonal(corrs.values, -1)               # remove the same column pairs
-        corrs = corrs[corrs>th].melt(ignore_index=False).reset_index().dropna() # subset by threshold
+        corrs = corrs[corrs > th].melt(ignore_index=False).reset_index().dropna()  # subset by threshold
 
         # TODO: For acyclical correlation measures (e.g. Theil's U), store direction as well
 
         # create the sorted pairs of feature names
         corrs['features'] = ['_'.join(sorted((i.index, i.variable))) for i in corrs.itertuples()]
-        corrs.drop_duplicates('features', inplace=True) # deduplicate combination pairs
-        corrs.sort_values(by='value', ascending=False, inplace=True) # sort by correlation
-        corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[['missings_corr']].squeeze() # rename and subset columns
+        corrs.drop_duplicates('features', inplace=True)  # deduplicate combination pairs
+        corrs.sort_values(by='value', ascending=False, inplace=True)  # sort by correlation
+        corrs = corrs.set_index('features').rename(columns={'value': 'missings_corr'})[
+            ['missings_corr']].squeeze()  # rename and subset columns
 
         if len(corrs) > 0:
             self.store_warning(
                 QualityWarning(
                     test='High Missing Correlations', category='Missings', priority=3, data=corrs,
-                    description=f"Found {len(corrs)} feature pairs with correlation "\
-                                 f"of missing values higher than defined threshold ({th})."
+                    description=f"Found {len(corrs)} feature pairs with correlation "
+                    f"of missing values higher than defined threshold ({th})."
                 )
             )
         return corrs
@@ -121,11 +122,12 @@ class MissingsProfiler(QualityEngine):
 
         # Guarantee that label is defined. Otherwise skip
         if self.label is None:
-            self._logger.warning('Argument "label" must be defined to calculate performance_drop metric. Skipping test.')
+            self._logger.warning(
+                'Argument "label" must be defined to calculate performance_drop metric. Skipping test.')
 
         # Guesstimate the prediction type
         prediction_type = self.__get_prediction_type()
-        results = pd.DataFrame({
+        results = DataFrame({
             c: performance_per_missing_value(df=self.df, feature=c, label=self.label, task=prediction_type)
             for c in cols
         })
@@ -152,7 +154,7 @@ class MissingsProfiler(QualityEngine):
         # Parse the columns for which to calculate the missingness performance
         cols = self._get_null_cols(col)
         # Calculate the performance for each feature
-        results = pd.Series(
+        results = Series(
                     {c: predict_missingness(df=self.df, feature=c) for c in cols},
                     name='predict_missings', dtype=object
                 )
@@ -165,7 +167,8 @@ class MissingsProfiler(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test='Missingness Prediction', category='Missings', priority=2, data=high_perfs,
-                    description=f'Found {len(high_perfs)} features with prediction performance of missingness above threshold ({th}).'
+                    description=f'Found {len(high_perfs)} features with prediction performance \
+                        of missingness above threshold ({th}).'
                 )
             )
         return results

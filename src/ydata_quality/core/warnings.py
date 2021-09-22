@@ -5,10 +5,14 @@ Definition of a data quality warning.
 from typing import Any
 
 from pydantic import BaseModel
-from ydata_quality.utils.enum import OrderedEnum
+
+from ..utils.enum import OrderedEnum
 
 
+# pylint: disable=too-few-public-methods
 class WarningStyling:
+    """WarningStyling is a helper class for print messages.
+    """
     PRIORITIES_F = {
         0: u"\u001b[48;5;1m",
         1: u"\u001b[48;5;209m",
@@ -48,7 +52,7 @@ class Priority(OrderedEnum):
             1: 'heavy impact expected',
             2: 'usage allowed, limited human intelligibility',
             3: 'minor impact, aesthetic'
-            }
+        }
         return f"{WarningStyling.PRIORITIES[self.value]}{WarningStyling.BOLD}Priority {self.value}{WarningStyling.ENDC} - {WarningStyling.BOLD}{_descriptions[self.value]}{WarningStyling.ENDC}:"
 
 
@@ -81,14 +85,17 @@ class QualityWarning(BaseModel):
         if self.__class__ is other.__class__:
             return self.priority >= other.priority
         return NotImplemented
+
     def __gt__(self, other):
         if self.__class__ is other.__class__:
             return self.priority > other.priority
         return NotImplemented
+
     def __le__(self, other):
         if self.__class__ is other.__class__:
             return self.priority <= other.priority
         return NotImplemented
+
     def __lt__(self, other):
         if self.__class__ is other.__class__:
             return self.priority < other.priority
@@ -106,10 +113,10 @@ class QualityWarning(BaseModel):
         if self.__class__ is other.__class__:
             return all(
                 (
-                self.category == other.category,
-                self.test == other.test,
-                self.description == other.description,
-                self.priority == other.priority
+                    self.category == other.category,
+                    self.test == other.test,
+                    self.description == other.description,
+                    self.priority == other.priority
                 )
             )
         return NotImplemented

@@ -2,8 +2,6 @@
 Utilities based on building baseline machine learning models.
 """
 
-from typing import Union
-
 import numpy as np
 import pandas as pd
 from scipy.stats import boxcox, normaltest, mode
@@ -20,8 +18,8 @@ from sklearn.preprocessing import (FunctionTransformer, OneHotEncoder,
                                    label_binarize)
 from sklearn.utils._testing import ignore_warnings
 
-from ydata_quality.utils.enum import PredictionTask
-from ydata_quality.utils.auxiliary import infer_dtypes
+from .enum import PredictionTask
+from .auxiliary import infer_dtypes
 
 BASELINE_CLASSIFIER = Pipeline([
     ('imputer', SimpleImputer()),
@@ -43,13 +41,13 @@ CATEGORICAL_TRANSFORMER = Pipeline([
 
 ORDINAL_TRANSFORMER = None  # Not implemented
 
+
 def get_prediction_task(df: pd.DataFrame, label: str):
     "Heuristics to infer prediction task (classification/regression)."
     # TODO: Improve prediction type guesstimate based on alternative heuristics (e.g. dtypes, value_counts)
-    if len(set(df[label])) == 2: # binary classification
-        return 'classification'
-    else:
-        return 'regression'
+
+    return 'classification' if len(set(df[label])) == 2 else 'regression'
+
 
 @ignore_warnings(category=ConvergenceWarning)
 def baseline_predictions(df: pd.DataFrame, label: str, task='classification'):
@@ -62,23 +60,24 @@ def baseline_predictions(df: pd.DataFrame, label: str, task='classification'):
     model = BASELINE_CLASSIFIER if task == 'classification' else BASELINE_REGRESSION
 
     # 2. Train overall model
-    X, y = df.drop(label, axis=1), label_binarize(df[label], classes=list(set(df[label])))
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    model.fit(X_train.select_dtypes('number'), y_train)
+    x, y = df.drop(label, axis=1), label_binarize(df[label], classes=list(set(df[label])))
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3, random_state=42)
+    model.fit(x_train.select_dtypes('number'), y_train)
 
     # 3. Predict
     if task == 'regression':
-        y_pred = model.predict(X_test.select_dtypes('number'))
+        y_pred = model.predict(x_test.select_dtypes('number'))
     elif task == 'classification':
-        y_pred = model.predict_proba(X_test.select_dtypes('number'))[:, 1]
+        y_pred = model.predict_proba(x_test.select_dtypes('number'))[:, 1]
 
-    # 4. Return both the predictions and X_test, y_test to analyze the performances
-    return y_pred, X_test, y_test
+    # 4. Return both the predictions and x_test, y_test to analyze the performances
+    return y_pred, x_test, y_test
+
 
 @ignore_warnings(category=DataConversionWarning)
 def baseline_performance(df: pd.DataFrame, label: str,
-                        task: PredictionTask = PredictionTask.CLASSIFICATION,
-                        adjusted_metric: bool = False):
+                         task: PredictionTask = PredictionTask.CLASSIFICATION,
+                         adjusted_metric: bool = False):
     """Train a baseline model, predict for a test set and return the performance.
 
     Args:
@@ -104,20 +103,22 @@ def baseline_performance(df: pd.DataFrame, label: str,
         perf = metric(y_test, y_pred)
     return perf
 
+
 def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable):
     """Calculates the adjusted metric as ratio of real to maximum performance.
 
     Returns the percentage to the best achievable performance starting from a baseline.
     """
     task = PredictionTask(task)
-    y_default = np.mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0] # define the value
-    y_base = np.tile(y_default, (len(y_true), 1)) # create an array with default value
+    y_default = np.mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0]  # define the value
+    y_base = np.tile(y_default, (len(y_true), 1))  # create an array with default value
 
     best_perf = metric(y_true, y_true)
     base_perf = metric(y_true, y_base)
     real_perf = metric(y_true, y_pred)
 
     return (real_perf - base_perf) / (best_perf - base_perf)
+
 
 @ignore_warnings(category=DataConversionWarning)
 def performance_per_feature_values(df: pd.DataFrame, feature: str, label: str, task='classification'):
@@ -130,20 +131,21 @@ def performance_per_feature_values(df: pd.DataFrame, feature: str, label: str, t
     metric = roc_auc_score if task == 'classification' else mean_squared_error
 
     # 2. Get the baseline predictions
-    y_pred, X_test, y_test = baseline_predictions(df=df, label=label, task=task)
+    y_pred, x_test, y_test = baseline_predictions(df=df, label=label, task=task)
 
     # 3. Get the performances per feature value
-    uniques = set(X_test[feature])
-    results =  {}
-    for i in uniques: # for each category
-        y_pred_cat = y_pred[X_test[feature]==i]
-        y_true_cat = y_test[X_test[feature]==i]
+    uniques = set(x_test[feature])
+    results = {}
+    for i in uniques:  # for each category
+        y_pred_cat = y_pred[x_test[feature] == i]
+        y_true_cat = y_test[x_test[feature] == i]
         try:
             results[i] = metric(y_true_cat, y_pred_cat)
         except Exception as exc:
             results[i] = f'[ERROR] Failed performance metric with message: {exc}'
 
     return results
+
 
 def performance_per_missing_value(df: pd.DataFrame, feature: str, label: str, task='classification'):
     """Performance difference between valued and missing values in feature."""
@@ -155,20 +157,21 @@ def performance_per_missing_value(df: pd.DataFrame, feature: str, label: str, ta
     metric = roc_auc_score if task == 'classification' else mean_squared_error
 
     # 2. Get the baseline predictions
-    y_pred, X_test, y_test = baseline_predictions(df=df, label=label, task=task)
+    y_pred, x_test, y_test = baseline_predictions(df=df, label=label, task=task)
 
     # 3. Get the performance per valued vs missing feature
-    missing_mask = X_test[feature].isna()
+    missing_mask = x_test[feature].isna()
     results = {}
     results['missing'] = metric(y_test[missing_mask], y_pred[missing_mask])
     results['valued'] = metric(y_test[~missing_mask], y_pred[~missing_mask])
     return results
 
+
 @ignore_warnings(category=ConvergenceWarning)
 def predict_missingness(df: pd.DataFrame, feature: str):
     "Train a baseline model to predict the missingness of a feature value."
     # 0. Preprocessing
-    df = df.copy() # avoid altering the original DataFrame
+    df = df.copy()  # avoid altering the original DataFrame
     target = f'is_missing_{feature}'
 
     # 1. Define the baseline model
@@ -179,16 +182,17 @@ def predict_missingness(df: pd.DataFrame, feature: str):
 
     # 3. Train overall model
     X, y = df.drop([feature, target], axis=1), df[target]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    model.fit(X_train.select_dtypes('number'), y_train)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    model.fit(x_train.select_dtypes('number'), y_train)
 
     # 4. Predict
-    y_pred = model.predict_proba(X_test.select_dtypes('number'))[:, 1]
+    y_pred = model.predict_proba(x_test.select_dtypes('number'))[:, 1]
 
     # 5. Return the area under the roc curve
     return roc_auc_score(y_test, y_pred)
 
-def standard_transform(df, dtypes, skip=[], robust = False):
+
+def standard_transform(df, dtypes, skip=[], robust=False):
     """Applies standard transformation to the dataset (imputation, centering and scaling), returns transformed data and the fitted transformer.
     Numerical data is imputed with mean, centered and scaled by 4 standard deviations.
     Categorical data is imputed with mode. Encoding is not performed in this stage to preserve the same columns.
@@ -197,7 +201,8 @@ def standard_transform(df, dtypes, skip=[], robust = False):
     """
     numerical_features = [key for key, value in dtypes.items() if value == 'numerical' and key not in skip]
     categorical_features = [key for key, value in dtypes.items() if value == 'categorical' and key not in skip]
-    assert len(numerical_features+categorical_features+skip) == len(df.columns), 'the union of dtypes keys with skip should be the same as the df columns'
+    assert len(numerical_features + categorical_features +
+               skip) == len(df.columns), 'the union of dtypes keys with skip should be the same as the df columns'
     if robust:
         numeric_transformer = Pipeline([
             ('imputer', SimpleImputer()),
@@ -205,38 +210,41 @@ def standard_transform(df, dtypes, skip=[], robust = False):
     else:
         numeric_transformer = NUMERIC_TRANSFORMER
     preprocessor = ColumnTransformer(
-    transformers=[  # Numerical vars are scaled by 4sd so that most of the data are fit in the [-1, 1] range
-        ('num', Pipeline(numeric_transformer.steps + [('divby4', FunctionTransformer(lambda x: x/4))]), numerical_features),
-        ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent'))]), categorical_features)],
+        transformers=[  # Numerical vars are scaled by 4sd so that most of the data are fit in the [-1, 1] range
+            ('num', Pipeline(numeric_transformer.steps + \
+             [('divby4', FunctionTransformer(lambda x: x / 4))]), numerical_features),
+            ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent'))]), categorical_features)],
         remainder='passthrough')
-    new_column_order = numerical_features+categorical_features+skip
-    tdf = pd.DataFrame(preprocessor.fit_transform(df), index = df.index, columns=new_column_order)
+    new_column_order = numerical_features + categorical_features + skip
+    tdf = pd.DataFrame(preprocessor.fit_transform(df), index=df.index, columns=new_column_order)
     return tdf, preprocessor
+
 
 def performance_one_vs_rest(df: pd.DataFrame, label_feat: str, _class: str, dtypes=None):
     """Train a classifier to predict a class in binary fashion against all other classes.
     A normalized dataframe should be passed for best results"""
     # 0. Preprocessing
-    df = df.copy() # avoid altering the original DataFrame
+    df = df.copy()  # avoid altering the original DataFrame
 
     # 1. Define the baseline model
     if not dtypes:
         dtypes = infer_dtypes(df)
     categorical_features = [key for key, value in dtypes.items() if value == 'categorical' and key != label_feat]
-    PREPROCESSOR = ColumnTransformer(
+    preprocessor = ColumnTransformer(
         transformers=[('cat', CATEGORICAL_TRANSFORMER, categorical_features)])  # One hot encode categorical variables (except label)
-    model = Pipeline([('preprocessing', PREPROCESSOR),('classifier', LogisticRegression())])
+    model = Pipeline([('preprocessing', preprocessor), ('classifier', LogisticRegression())])
 
     # 2. Train overall model
     X, y = df.drop(label_feat, axis=1), label_binarize(df[label_feat], classes=[_class]).squeeze()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=24)
-    model.fit(X_train, y_train)
+    x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=24)
+    model.fit(x_train, y_train)
 
     # 3. Predict
-    y_pred = model.predict_proba(X_test)[:, 1]
+    y_pred = model.predict_proba(x_test)[:, 1]
 
     # 4. Return the area under the roc curve
     return roc_auc_score(y_test, y_pred)
+
 
 def estimate_centroid(df: pd.DataFrame, dtypes: dict = None):
     """Makes a centroid estimation for a given dataframe.
@@ -252,19 +260,21 @@ def estimate_centroid(df: pd.DataFrame, dtypes: dict = None):
         centroid[col] = statistic(df[col])
     return centroid
 
+
 def heom(x: pd.DataFrame, y, dtypes):
     """Implements the Heterogeneous Euclidean-Overlap Metric between a sample x and a reference y.
     The data is assumed to already be preprocessed (normalized and imputed).
     [1]From 1997 Wilson, D. Randall; Martinez, Tony R. - Improved Heterogeneous Distance Functions https://arxiv.org/pdf/cs/9701101.pdf
     """
     distances = pd.DataFrame(np.empty(x.shape), index=x.index, columns=x.columns)
-    distance_funcs = {'categorical': lambda x, y: 0 if x==y else 1,
-        'numerical': lambda x, y: abs(x-y)}  # Note, here we are assuming the data to be previously scaled
+    distance_funcs = {'categorical': lambda x, y: 0 if x == y else 1,
+                      'numerical': lambda x, y: abs(x - y)}  # Note, here we are assuming the data to be previously scaled
     for i, column in enumerate(distances.columns):
         distances[column] = x[column].apply(distance_funcs[dtypes[column]], args=[y[i]])
     return distances
 
-def estimate_sd(sample: pd.DataFrame, reference=None, dtypes = None):
+
+def estimate_sd(sample: pd.DataFrame, reference=None, dtypes=None):
     """Estimates the standard deviation of a sample of records.
     A reference can be passed in order to avoid new computation of mean or to use distances to another reference point.
     The reference is expected as a (1, N) array where N is the number of columns in the sample.
@@ -280,19 +290,23 @@ def estimate_sd(sample: pd.DataFrame, reference=None, dtypes = None):
     if reference is None:
         reference = estimate_centroid(sample, dtypes)
     else:
-        assert len(reference) == len(sample.columns), "The provided reference point does not have the same dimension as the sample records"
+        assert len(reference) == len(
+            sample.columns), "The provided reference point does not have the same dimension as the sample records"
     distances = heom(x=sample, y=reference, dtypes=dtypes)
-    euclidean_distances = (distances.apply(np.square).sum(axis=1)/len(sample.columns)).apply(np.sqrt)
+    euclidean_distances = (distances.apply(np.square).sum(axis=1) / len(sample.columns)).apply(np.sqrt)
     std_dev = np.std(euclidean_distances)
-    std_distances = euclidean_distances/std_dev
+    std_distances = euclidean_distances / std_dev
     return std_dev, std_distances
 
+
+# pylint: disable=invalid-name
 def GMM_clustering(data, n_gaussians):
     """Produces a GMM model with n_gaussians to cluster provided data."""
     gmm_ = GaussianMixture(n_components=n_gaussians).fit(data)
     return gmm_.predict(data), gmm_.aic(data)
 
-def normality_test(data, suite='full', p_th= 5e-3):
+
+def normality_test(data, suite='full', p_th=5e-3):
     """Performs a normality test on the data. Null hypothesis, data comes from normal distribution.
     A transformations taken from a suite is applied to the data before each run of the normal test.
     The first transformation in the suite that passes the normalcy test is returned
@@ -300,10 +314,10 @@ def normality_test(data, suite='full', p_th= 5e-3):
         result: True if any transformation led to a positive normal test, False otherwise
         test: The first test in the suite to lead to positive normal test"""
     transforms = {None: lambda x: x,
-        'inverse': np.reciprocal,
-        'square root': np.sqrt,
-        'log':  np.log,
-        'Box Cox': boxcox}
+                  'inverse': np.reciprocal,
+                  'square root': np.sqrt,
+                  'log': np.log,
+                  'Box Cox': boxcox}
     if suite == 'full':
         suite = transforms.keys()
     else:
@@ -312,8 +326,8 @@ def normality_test(data, suite='full', p_th= 5e-3):
         try:
             transformed_data = transforms[transform](data)
             _, p_stat = normaltest(transformed_data, nan_policy='raise')
-        except:
+        except BaseException:
             continue
-        if p_stat>p_th:
+        if p_stat > p_th:
             return True, transform, p_stat
     return False, None, None

@@ -4,30 +4,32 @@ Implementation of main class for Data Quality checks.
 from collections import Counter
 from typing import Callable, List, Optional, Union
 
-import pandas as pd
+from pandas import DataFrame
 
-from ydata_quality.core.warnings import Priority, QualityWarning, WarningStyling
-from ydata_quality.drift import DriftAnalyser
-from ydata_quality.duplicates import DuplicateChecker
-from ydata_quality.labelling import LabelInspector
-from ydata_quality.missings import MissingsProfiler
-from ydata_quality.erroneous_data import ErroneousDataIdentifier
-from ydata_quality.data_expectations import DataExpectationsReporter
-from ydata_quality.bias_fairness import BiasFairness
-from ydata_quality.data_relations import DataRelationsDetector
-from ydata_quality.utils.logger import get_logger, NAME
+from .warnings import Priority, QualityWarning, WarningStyling
+from ..bias_fairness import BiasFairness
+from ..data_expectations import DataExpectationsReporter
+from ..data_relations import DataRelationsDetector
+from ..duplicates import DuplicateChecker
+from ..drift import DriftAnalyser
+from ..erroneous_data import ErroneousDataIdentifier
+from ..labelling import LabelInspector
+from ..missings import MissingsProfiler
+from ..utils.logger import get_logger, NAME
 
+
+# pylint: disable=dangerous-default-value,too-many-locals
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
 
     def __init__(self,
-                    df: pd.DataFrame,
+                    df: DataFrame,
                     label: str = None,
                     random_state: Optional[int]  = None,
                     entities: List[Union[str, List[str]]] = [],
                     is_close: bool= False,
                     ed_extensions: Optional[list]=[],
-                    sample: Optional[pd.DataFrame] = None,
+                    sample: Optional[DataFrame] = None,
                     model: Callable = None,
                     results_json_path: str = None,
                     error_tol: int = 0,
@@ -52,7 +54,7 @@ class DataQuality:
         - Data Relations
 
         Args:
-            df (pd.DataFrame): reference DataFrame used to run the DataQuality analysis.
+            df (DataFrame): reference DataFrame used to run the DataQuality analysis.
             label (str, optional): [MISSINGS, LABELLING, DRIFT ANALYSIS] target feature to be predicted.
                                     If not specified, LABELLING is skipped.
             random_state (int, optional): Integer seed for random reproducibility. Default is None.
@@ -74,13 +76,13 @@ class DataQuality:
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
             severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        #TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
+        # TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
         self.df = df
-        self._warnings = list()
+        self._warnings = []
         self._logger = get_logger(NAME, level=severity)
         self._random_state = random_state
 
-        self._engines_legacy = { # Default list of engines
+        self._engines_legacy = {  # Default list of engines
             'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close, severity=severity),
             'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state, severity=severity),
             'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions, severity=severity),
@@ -88,12 +90,12 @@ class DataQuality:
         }
 
         self._engines_new = {'data-relations': DataRelationsDetector(severity=severity)}
-        self._eval_args = { # Argument lists for different engines
-        # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
-        # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
-        # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args) for name, engine in self.engines.items()}
+        self._eval_args = {  # Argument lists for different engines
+            # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
+            # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
+            # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args) for name, engine in self.engines.items()}
             'expectations': [results_json_path, df, error_tol, rel_error_tol, minimum_coverage],
-            'data-relations': [df, dtypes, label, corr_th,  vif_th, p_th, plot]
+            'data-relations': [df, dtypes, label, corr_th, vif_th, p_th, plot]
         }
 
         # Engines based on mandatory arguments
@@ -102,7 +104,7 @@ class DataQuality:
                                                                random_state=self.random_state, severity=severity)
         else:
             self._logger.warning('Label is not defined. Skipping LABELLING engine.')
-        if len(sensitive_features)>0:
+        if len(sensitive_features) > 0:
             self._engines_legacy['bias&fairness'] = BiasFairness(df=df, sensitive_features=sensitive_features,
                                                                  label=label, random_state=self.random_state,
                                                                  severity=severity)
@@ -111,20 +113,20 @@ class DataQuality:
         if results_json_path is not None:
             self._engines_new['expectations'] = DataExpectationsReporter(severity=severity)
         else:
-            self._logger.warning('The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
+            self._logger.warning(
+                'The path to a Great Expectations results json is not defined. Skipping EXPECTATIONS engine.')
 
-
-    def __clean_warnings(self):
+    def _clean_warnings(self):
         """Deduplicates and sorts the list of warnings."""
-        self._warnings = sorted(list(set(self._warnings))) # Sort unique warnings by priority
+        self._warnings = sorted(list(set(self._warnings)))  # Sort unique warnings by priority
 
     def get_warnings(self,
-                    category: Optional[str] = None,
-                    test: Optional[str] = None,
-                    priority: Optional[Priority] = None) -> List[QualityWarning]:
+                     category: Optional[str] = None,
+                     test: Optional[str] = None,
+                     priority: Optional[Priority] = None) -> List[QualityWarning]:
         "Retrieves warnings filtered by their properties."
-        self.__store_warnings()
-        self.__clean_warnings()
+        self._store_warnings()
+        self._clean_warnings()
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
         filtered = [w for w in filtered if w.test == test] if test else filtered
         filtered = [w for w in filtered if w.priority == Priority(priority)] if priority else filtered
@@ -143,13 +145,14 @@ class DataQuality:
     @random_state.setter
     def random_state(self, new_state):
         "Sets new state to random state."
-        if new_state==None or (isinstance(new_state, int) and new_state>=0):
+        if new_state is None or (isinstance(new_state, int) and new_state >= 0):
             self._random_state = new_state
         else:
-            self._logger.warning('An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
+            self._logger.warning(
+                'An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
             self._random_state = None
 
-    def __store_warnings(self):
+    def _store_warnings(self):
         "Appends all warnings from individiual engines into warnings of DataQuality main class."
         for engine in self.engines.values():
             self._warnings += engine.get_warnings()
@@ -160,25 +163,33 @@ class DataQuality:
         Arguments:
             summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
         """
-        results = {name: engine.evaluate(*self._eval_args.get(name,[]), summary=False) for name, engine in self.engines.items()}
-        self.__store_warnings() # fetch all warnings from the engines
-        self.__clean_warnings()
+        results = {
+            name: engine.evaluate(*self._eval_args.get(name,[]), summary=False) for name, engine in self.engines.items()
+        }
+        self._store_warnings() # fetch all warnings from the engines
+        self._clean_warnings()
         if summary:
             self._report()
+
         return results
 
     def _report(self):
         "Prints a report containing all the warnings detected during the data quality analysis."
-        self.__clean_warnings()
+        self._clean_warnings()
         if not self._warnings:
             print(f'{WarningStyling.OKAY}No warnings found.{WarningStyling.ENDC}')
         else:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
             print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
+            print(
+                *
+                (
+                    f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio,
+                    count in prio_counts.items()),
+                sep='\n')
             warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
             for warn_list in warns:
-                if len(warn_list)>0:
+                if len(warn_list) > 0:
                     print(warn_list[0].priority)
                 print(*(f"\t{warn}" for warn in warn_list), sep='\n')
