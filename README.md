@@ -51,7 +51,7 @@ warnings = dq.get_warnings()
 ```
 # Examples
 
-Here you can find walkthrough tutorials and examples to familarize with different modules of `ydata_quality`
+Here you can find walkthrough tutorials and examples to familiarize with different modules of `ydata_quality`
 
 - [Start Here for Quick and Overall Walkthrough](https://github.com/ydataai/ydata-quality/blob/master/tutorials/main.ipynb)
 
