@@ -98,7 +98,7 @@ class DuplicateChecker(QualityEngine):
                     ent_dups.setdefault(entity_key, {})[val] = dups[(dups[entity].values==val).all(axis=1)]
         else: # if entity is not specified
             if len(self.entities) == 0:
-                self._logger.info("There are no entities defined to run the analysis. Skipping the test.")
+                self._logger.warning("There are no entities defined to run the analysis. Skipping the test.")
                 return None
             else:
                 for col in self.entities:
