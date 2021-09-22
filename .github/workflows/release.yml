@@ -1,8 +1,8 @@
-name: prerelease
+name: release
 
 on:
   release:
-    types: [ prereleased ]
+    types: [ released ]
 
 jobs:
   package:
