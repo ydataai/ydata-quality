@@ -30,7 +30,7 @@ jobs:
         python -m pip install wheel
 
     - name: Build package
-      run: make package version=${{ steps.version.outputs.value }}
+      run: make package PYTHON=python version=${{ steps.version.outputs.value }}
 
     - name: Upload Pipeline Artifacts
       uses: actions/upload-artifact@v2
