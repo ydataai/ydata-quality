@@ -8,6 +8,25 @@ from pydantic import BaseModel
 from ydata_quality.utils.enum import OrderedEnum
 
 
+class WarningStyling:
+    PRIORITIES_F = {
+        0: u"\u001b[48;5;1m",
+        1: u"\u001b[48;5;209m",
+        2: u"\u001b[48;5;11m",
+        3: u"\u001b[48;5;69m"
+    }
+    PRIORITIES = {
+        0: u"\u001b[38;5;1m",
+        1: u"\u001b[38;5;209m",
+        2: u"\u001b[38;5;11m",
+        3: u"\u001b[38;5;69m"
+    }
+    OKAY = u"\u001b[38;5;2m"
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
 class Priority(OrderedEnum):
     """Priorities translate the expected impact of data quality issues.
 
@@ -30,7 +49,7 @@ class Priority(OrderedEnum):
             2: 'usage allowed, limited human intelligibility',
             3: 'minor impact, aesthetic'
             }
-        return f"Priority {self.value}: {_descriptions[self.value]}"
+        return f"{WarningStyling.PRIORITIES[self.value]}{WarningStyling.BOLD}Priority {self.value}{WarningStyling.ENDC} - {WarningStyling.BOLD}{_descriptions[self.value]}{WarningStyling.ENDC}:"
 
 
 class QualityWarning(BaseModel):
@@ -53,7 +72,7 @@ class QualityWarning(BaseModel):
     # String Representation #
     #########################
     def __str__(self):
-        return f"[{self.test.upper()}] {self.description} ({str(self.priority)})"
+        return f"{WarningStyling.PRIORITIES[self.priority.value]}*{WarningStyling.ENDC} {WarningStyling.BOLD}[{self.category.upper()}{WarningStyling.ENDC} - {WarningStyling.UNDERLINE}{self.test.upper()}]{WarningStyling.ENDC} {self.description}"
 
     ########################
     # Comparison Operators #
