@@ -32,13 +32,13 @@ env: ### Create a virtual environment
 	$(PYTHON) -m pip install --upgrade pip
 	$(PIP) install -r requirements.txt
 
-env-dev: env
+env-dev: env install-deps
+
+install-deps:
 	$(PIP) install -r requirements-dev.txt
-	$(PIP) install pylint
-	$(PIP) install pytest
 
 lint: ### Validates project with linting rules
-	$(PYTHON) -m pylint src/
+	$(PYTHON) -m prospector src/
 
 test: ### Runs all the project tests
 	$(PYTHON) -m pytest tests/
