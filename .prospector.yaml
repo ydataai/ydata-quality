@@ -1,0 +1,46 @@
+ignore-patterns:
+  - (^|/)\..+
+
+strictness: veryhigh
+
+pylint:
+  disable:
+  - fixme
+  - bad-continuation
+  - bad-indentation
+  - too-few-public-methods
+
+  options:
+    max-locals: 15
+    max-returns: 6
+    max-branches: 12
+    max-statements: 50
+    max-parents: 7
+    max-attributes: 7
+    min-public-methods: 2
+    max-public-methods: 20
+    max-module-lines: 500
+    max-line-length: 120
+
+mccabe:
+  options:
+    max-complexity: 10
+
+pep8:
+  options:
+    max-line-length: 120
+    single-line-if-stmt: n
+
+  disable:
+  - E111
+  - E114
+  - E121
+
+pyroma:
+  disable:
+  - PYR19
+  - PYR16
+
+pep257:
+  disable:
+  - D000
