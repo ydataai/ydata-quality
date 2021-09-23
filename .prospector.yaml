@@ -19,7 +19,7 @@ pylint:
     max-attributes: 7
     min-public-methods: 2
     max-public-methods: 20
-    max-module-lines: 1000
+    max-module-lines: 500
     max-line-length: 120
 
 mccabe:
