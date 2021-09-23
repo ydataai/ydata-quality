@@ -86,6 +86,6 @@ For support in using this library, please join the #help Slack channel. The Slac
 # License
 [GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
 
-# About 👯‍♂️
+# About
 
-With ❤️   from [YData](https://ydata.ai) [Development team](mailto://developers@ydata.ai)
+With ♥️ from [YData](https://ydata.ai) [Development team](mailto://developers@ydata.ai)
