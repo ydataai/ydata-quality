@@ -1,10 +1,17 @@
-# ydata-quality
+![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
+![](https://img.shields.io/pypi/status/ydata-quality)
+[![](https://pepy.tech/badge/ydata-quality)](https://pypi.org/project/ydata-quality/)
+![](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue)
+[![](https://img.shields.io/pypi/v/ydata-quality)](https://pypi.org/project/ydata-quality/)
+![](https://img.shields.io/github/license/ydataai/ydata-quality)
+
+# YData Quality
 
 ydata_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
 
 A holistic view of the data can only be captured through a look at data from multiple dimensions and `ydata_quality` evaluates it in a modular way wrapped into a single Data Quality engine. This repository contains the core python source scripts and walkthrough tutorials.
 
-# Quickstart
+## Quickstart
 
 The source code is currently hosted on GitHub at: https://github.com/ydataai/ydata-quality
 
@@ -49,9 +56,9 @@ On top of the summary, you can retrieve a list of detected warnings for detailed
 # retrieve a list of data quality warnings 
 warnings = dq.get_warnings()
 ```
-# Examples
+## Examples
 
-Here you can find walkthrough tutorials and examples to familarize with different modules of `ydata_quality`
+Here you can find walkthrough tutorials and examples to familiarize with different modules of `ydata_quality`
 
 - [Start Here for Quick and Overall Walkthrough](https://github.com/ydataai/ydata-quality/blob/master/tutorials/main.ipynb)
 
@@ -65,17 +72,20 @@ To dive into any focussed module, and to understand how they work, here are tuto
 7.  [Missings](https://github.com/ydataai/ydata-quality/blob/master/tutorials/missings.ipynb)
 8.  [Erroneous Data](https://github.com/ydataai/ydata-quality/blob/master/tutorials/erroneous_data.ipynb)
 
-# Contributing
+## Contributing
 We are open to collaboration! If you want to start contributing you only need to:
-1. Search for an issue in which you would like to work. Issues for newcomers are labeled with good first issue.
-2. Create a PR solving the issue.
-3. We would review every PRs and either accept or ask for revisions.
+1.	Search for an issue in which you would like to work on. Issues for newcomers are labeled with good first issue.
+2.	Create a PR solving the issue.
+3.	We would review every PR and either accept or ask for revisions.
 
 You can also join the discussions on the #data-quality channel on our [Slack](http://slack.ydata.ai) and request features/bug fixes by opening issues on our repository.
 
-# Support
+## Support
 For support in using this library, please join the #help Slack channel. The Slack community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Slack community!](http://slack.ydata.ai/)
 
-# License
+## License
 [GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
 
+## About
+
+With ♥️ from [YData](https://ydata.ai) [Development team](mailto://developers@ydata.ai)
