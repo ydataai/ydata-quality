@@ -1,3 +1,10 @@
+![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
+![](https://img.shields.io/pypi/status/ydata-quality)
+[![](https://pepy.tech/badge/ydata-quality)](https://pypi.org/project/ydata-quality/)
+![](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue)
+[![](https://img.shields.io/pypi/v/ydata-quality)](https://pypi.org/project/ydata-quality/)
+![](https://img.shields.io/github/license/ydataai/ydata-quality)
+
 # YData Quality
 
 ydata_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
