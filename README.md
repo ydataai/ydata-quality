@@ -1,5 +1,6 @@
 ![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
 ![](https://img.shields.io/pypi/status/ydata-quality)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/f1662116e982402c956d2720fbd24507)](https://app.codacy.com/gh/ydataai/ydata-quality?utm_source=github.com&utm_medium=referral&utm_content=ydataai/ydata-quality&utm_campaign=Badge_Grade_Settings)
 [![](https://pepy.tech/badge/ydata-quality)](https://pypi.org/project/ydata-quality/)
 ![](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue)
 [![](https://img.shields.io/pypi/v/ydata-quality)](https://pypi.org/project/ydata-quality/)
