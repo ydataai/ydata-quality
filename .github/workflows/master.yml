@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-20.04
 
     outputs:
-      build_number: ${{ steps.dev_number.outputs.value }}
+      build_number: ${{ steps.build_number.outputs.value }}
       new_release: ${{ steps.semantic.outputs.new_release_published }}
       release: ${{ steps.semantic.outputs.new_release_version }}
       release_notes: ${{ steps.semantic.outputs.new_release_notes }}
@@ -31,12 +31,12 @@ jobs:
         semantic_version: 17.3.7
 
     - name: Count number or releases for tag
-      id: dev_number
+      id: build_number
       run: echo "::set-output name=value::$(($(git tag | grep -c build/${{ steps.semantic.outputs.new_release_version }}) + 1))"
 
     - name: Compute version
       id: version
-      run: echo "::set-output name=value::${{ steps.semantic.outputs.new_release_version }}.pre${{ steps.dev_number.outputs.value }}"
+      run: echo "::set-output name=value::${{ steps.semantic.outputs.new_release_version }}.pre${{ steps.build_number.outputs.value }}"
 
   prerelease:
     if: needs.prepare.outputs.new_release == 'true'
