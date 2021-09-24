@@ -1,3 +1,4 @@
+[![](https://api.codacy.com/project/badge/Grade/f1662116e982402c956d2720fbd24507)](https://app.codacy.com/gh/ydataai/ydata-quality)
 ![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
 ![](https://img.shields.io/pypi/status/ydata-quality)
 [![](https://pepy.tech/badge/ydata-quality)](https://pypi.org/project/ydata-quality/)
