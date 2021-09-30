@@ -69,7 +69,8 @@ DataFrame's columns."
         if len(dups) > 0:
             self.store_warning(
                 QualityWarning(
-                    test='Exact Duplicates', category='Duplicates', priority=2, data=dups,
+                    test=QualityWarning.Test.EXACT_DUPLICATES, category=QualityWarning.Category.DUPLICATES,
+                    priority=2, data=dups,
                     description=f"Found {len(dups)} instances with exact duplicate feature values."
                 ))
         else:
@@ -124,7 +125,8 @@ DataFrame's columns."
         if cols_with_dups > 0:
             self.store_warning(
                 QualityWarning(
-                    test='Duplicate Columns', category='Duplicates', priority=1, data=dups,
+                    test=QualityWarning.Test.DUPLICATE_COLUMNS, category=QualityWarning.Category.DUPLICATES,
+                    priority=1, data=dups,
                     description=f"Found {cols_with_dups} columns with exactly the same feature values as other columns."
                 )
             )

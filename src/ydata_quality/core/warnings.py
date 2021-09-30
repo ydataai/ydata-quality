@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from ..utils.enum import OrderedEnum
+from ..utils.enum import OrderedEnum, StringEnum
 
 
 # pylint: disable=too-few-public-methods
@@ -67,8 +67,62 @@ class QualityWarning(BaseModel):
     data: sample data
     """
 
-    category: str
-    test: str
+    class Category(StringEnum):
+        BIAS_FAIRNESS = "BIAS&FAIRNESS"
+        DATA_EXPECTATIONS = "DATA EXPECTATIONS"
+        DATA_RELATIONS = "DATA RELATIONS"
+        DUPLICATES = "DUPLICATES"
+        ERRONEOUS_DATA = "ERRONEOUS DATA"
+        LABELS = "LABELS"
+        MISSINGS = "MISSINGS"
+        SAMPLING = "SAMPLING"
+
+    class Test(StringEnum):
+        # BIAS&FAIRNESS
+        PROXY_IDENTIFICATION = "PROXY IDENTIFICATION"
+        SENSITIVE_ATTRIBUTE_PREDICTABILITY = "SENSITIVE ATTRIBUTE PREDICTABILITY"
+        SENSITIVE_ATTRIBUTE_REPRESENTATIVITY = "SENSITIVE ATTRIBUTE REPRESENTATIVITY"
+
+        # DATA EXPECTATIONS
+        COVERAGE_FRACTION = "COVERAGE FRACTION"
+        EXPECTATION_ASSESSMENT_VALUE_BETWEEN = "EXPECTATION ASSESSMENT - VALUE BETWEEN"
+        OVERALL_ASSESSMENT = "OVERALL ASSESSMENT"
+
+        # DATA RELATIONS
+        COLLIDER_CORRELATIONS = "COLLIDER CORRELATIONS"
+        CONFOUNDED_CORRELATIONS = "CONFOUNDED CORRELATIONS"
+        HIGH_COLLINEARITY_CATEGORICAL = "HIGH COLLINEARITY - CATEGORICAL"
+        HIGH_COLLINEARITY_NUMERICAL = "HIGH COLLINEARITY - NUMERICAL"
+
+        # DUPLICATES
+        DUPLICATE_COLUMNS = "DUPLICATE COLUMNS"
+        ENTITY_DUPLICATES = "ENTITY DUPLICATES"
+        EXACT_DUPLICATES = "EXACT DUPLICATES"
+
+        # ERRONEOUS DATA
+        FLATLINES = "FLATLINES"
+        PREDEFINED_ERRONEOUS_DATA = "PREDEFINED ERRONEOUS DATA"
+
+        # LABELS
+        FEW_LABELS = "FEW LABELS"
+        MISSING_LABELS = "MISSING LABELS"
+        ONE_REST_PERFORMANCE = "ONE VS REST PERFORMANCE"
+        OUTLIER_DETECTION = "OUTLIER DETECTION"
+        TEST_NORMALITY = "TEST NORMALITY"
+        UNBALANCED_CLASSES = "UNBALANCED CLASSES"
+
+        # MISSINGS
+        HIGH_MISSINGS = "HIGH MISSINGS"
+        HIGH_MISSING_CORRELATIONS = "HIGH MISSING CORRELATIONS"
+        MISSINGNESS_PREDICTION = "MISSINGNESS PREDICTION"
+
+        # SAMPLING
+        CONCEPT_DRIFT = "CONCEPT DRIFT"
+        SAMPLE_COVARIATE_DRIFT = "SAMPLE COVARIATE DRIFT"
+        SAMPLE_LABEL_DRIFT = "SAMPLE LABEL DRIFT"
+
+    category: Category
+    test: Test
     description: str
     priority: Priority
     data: Any = None
@@ -78,7 +132,7 @@ class QualityWarning(BaseModel):
     #########################
     def __str__(self):
         return f"{WarningStyling.PRIORITIES[self.priority.value]}*{WarningStyling.ENDC} {WarningStyling.BOLD}\
-[{self.category.upper()}{WarningStyling.ENDC} - {WarningStyling.UNDERLINE}{self.test.upper()}]{WarningStyling.ENDC} \
+[{self.category.value}{WarningStyling.ENDC} - {WarningStyling.UNDERLINE}{self.test.value}]{WarningStyling.ENDC} \
 {self.description}"
 
     ########################
