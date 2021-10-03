@@ -30,7 +30,7 @@ from numpy import (
     isnan,
     triu_indices_from,
 )
-import scipy.stats as ss
+from scipy.stats import pearsonr, chi2_contingency
 from scipy.stats.distributions import chi2
 from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
 import seaborn as sb
@@ -74,7 +74,7 @@ def pearson_correlation(col1: ndarray, col2: ndarray) -> float:
     Args:
         col1 (ndarray): A numerical column with no null values
         col2 (ndarray): A numerical column with no null values"""
-    return ss.pearsonr(col1, col2)[0]
+    return pearsonr(col1, col2)[0]
 
 
 def unbiased_cramers_v(col1: ndarray, col2: ndarray) -> float:
@@ -86,7 +86,7 @@ def unbiased_cramers_v(col1: ndarray, col2: ndarray) -> float:
         col2 (ndarray): A categorical column with no null values"""
     n = col1.size
     contingency_table = crosstab(col1, col2)
-    chi_sq = ss.chi2_contingency(contingency_table)[0]
+    chi_sq = chi2_contingency(contingency_table)[0]
     phi_sq = chi_sq / n
     r, k = contingency_table.shape
     phi_sq_hat = npmax([0, phi_sq - ((r - 1) * (k - 1)) / (n - 1)])
@@ -219,7 +219,7 @@ def chi2_collinearity(data: DataFrame, dtypes: dict, p_th: float, label: str = N
     crit_chis = {}
     for comb in combs:
         cont = crosstab(data[comb[0]], data[comb[1]])
-        chi, p, dof, _ = ss.chi2_contingency(cont)
+        chi, p, dof, _ = chi2_contingency(cont)
         crit_chi = crit_chis.setdefault(dof, chi2.ppf(1 - p_th, dof))
         if chi > crit_chi:
             adj_chi = chi
