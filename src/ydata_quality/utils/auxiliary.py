@@ -7,7 +7,7 @@ import json
 
 from pandas import DataFrame, Series, Index, DatetimeIndex, PeriodIndex, TimedeltaIndex
 from pandas.api.types import infer_dtype
-import numpy as np
+from numpy import isclose
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from .enum import DataFrameType
@@ -86,7 +86,7 @@ def find_duplicate_columns(df: DataFrame, is_close=False) -> dict:
     for idx, col in enumerate(df.columns):  # Iterate through all the columns of dataframe
         ref = df[col]                      # Take the column values as reference.
         for tgt_col in df.columns[idx + 1:]:  # Iterate through all other columns
-            if np.isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):  # Take target values
+            if isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):  # Take target values
                 dups.setdefault(col, []).append(tgt_col)  # Store if they match
     return dups
 

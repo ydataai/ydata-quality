@@ -4,7 +4,7 @@ Implementation of DriftAnalyser engine to run data drift analysis.
 from typing import Callable, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
-import numpy as np
+from numpy import ndarray, arange
 
 from pandas import DataFrame, Series
 from scipy.stats import ks_2samp
@@ -136,7 +136,7 @@ class DriftAnalyser(QualityEngine):
             test_x = self.df.head().copy()
             test_x.drop(self.label, axis=1, inplace=True)
             output = self.model(test_x)
-            assert isinstance(output, (Series, np.ndarray)), "The provided model failed to produce the expected output."
+            assert isinstance(output, (Series, ndarray)), "The provided model failed to produce the expected output."
             assert len(
                 output) == test_x.shape[0], "The provided model failed to produce output with the expected dimensionality."
         else:
@@ -198,7 +198,7 @@ class DriftAnalyser(QualityEngine):
         if self.label:
             covariates.drop(self.label, axis=1, inplace=True)
             holdout.drop(self.label, axis=1, inplace=True)
-        leftover_fractions = np.arange(0.2, 1.2, 0.2)
+        leftover_fractions = arange(0.2, 1.2, 0.2)
         perc_index = ["{0:.0%}".format(fraction) for fraction in leftover_fractions]
         control_metric = Series(index=perc_index, dtype=str)
         bonferroni_p = p_thresh / len(covariates.columns)  # Bonferroni correction
@@ -236,7 +236,7 @@ class DriftAnalyser(QualityEngine):
 
         labels = self._remaining_data[self.label].copy()
         holdout = self._holdout[self.label]
-        leftover_fractions = np.arange(0.2, 1.2, 0.2)
+        leftover_fractions = arange(0.2, 1.2, 0.2)
         p_values = DataFrame(index=["{:.0%}".format(fraction) for fraction in leftover_fractions],
                              columns=['Label p-value', 'p-value threshold'])
         for idx, fraction in enumerate(leftover_fractions):

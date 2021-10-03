@@ -2,8 +2,8 @@
 Utilities based on building baseline machine learning models.
 """
 
-import numpy as np
 from pandas import DataFrame, Series
+from numpy import mean, tile, empty, std, square, sqrt, log as nplog, reciprocal
 from scipy.stats import boxcox, normaltest, mode
 from sklearn.compose import ColumnTransformer
 from sklearn.exceptions import ConvergenceWarning, DataConversionWarning
@@ -110,8 +110,8 @@ def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable)
     Returns the percentage to the best achievable performance starting from a baseline.
     """
     task = PredictionTask(task)
-    y_default = np.mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0]  # define the value
-    y_base = np.tile(y_default, (len(y_true), 1))  # create an array with default value
+    y_default = mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0]  # define the value
+    y_base = tile(y_default, (len(y_true), 1))  # create an array with default value
 
     best_perf = metric(y_true, y_true)
     base_perf = metric(y_true, y_base)
@@ -266,7 +266,7 @@ def heom(x: DataFrame, y, dtypes):
     The data is assumed to already be preprocessed (normalized and imputed).
     [1]From 1997 Wilson, D. Randall; Martinez, Tony R. - Improved Heterogeneous Distance Functions https://arxiv.org/pdf/cs/9701101.pdf
     """
-    distances = DataFrame(np.empty(x.shape), index=x.index, columns=x.columns)
+    distances = DataFrame(empty(x.shape), index=x.index, columns=x.columns)
     distance_funcs = {'categorical': lambda x, y: 0 if x == y else 1,
                       'numerical': lambda x, y: abs(x - y)}  # Note, here we are assuming the data to be previously scaled
     for i, column in enumerate(distances.columns):
@@ -293,8 +293,8 @@ def estimate_sd(sample: DataFrame, reference=None, dtypes=None):
         assert len(reference) == len(
             sample.columns), "The provided reference point does not have the same dimension as the sample records"
     distances = heom(x=sample, y=reference, dtypes=dtypes)
-    euclidean_distances = (distances.apply(np.square).sum(axis=1) / len(sample.columns)).apply(np.sqrt)
-    std_dev = np.std(euclidean_distances)
+    euclidean_distances = (distances.apply(square).sum(axis=1) / len(sample.columns)).apply(sqrt)
+    std_dev = std(euclidean_distances)
     std_distances = euclidean_distances / std_dev
     return std_dev, std_distances
 
@@ -314,9 +314,9 @@ def normality_test(data, suite='full', p_th=5e-3):
         result: True if any transformation led to a positive normal test, False otherwise
         test: The first test in the suite to lead to positive normal test"""
     transforms = {None: lambda x: x,
-                  'inverse': np.reciprocal,
-                  'square root': np.sqrt,
-                  'log': np.log,
+                  'inverse': reciprocal,
+                  'square root': sqrt,
+                  'log': nplog,
                   'Box Cox': boxcox}
     if suite == 'full':
         suite = transforms.keys()
