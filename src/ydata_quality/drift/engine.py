@@ -3,7 +3,7 @@ Implementation of DriftAnalyser engine to run data drift analysis.
 """
 from typing import Callable, Optional, Tuple, Union
 
-import matplotlib.pyplot as plt
+from matplotlib.pyplot import show as pltshow
 from numpy import ndarray, arange
 
 from pandas import DataFrame, Series
@@ -218,7 +218,7 @@ class DriftAnalyser(QualityEngine):
                 xlabel='Percentage of remaining sample used',
                 ylabel='Percentage of no drift features',
                 ylim = (0, 104), style='.-')
-            plt.show()
+            pltshow()
         return all_p_vals
 
     def ref_label_drift(self, p_thresh: float= 0.05, plot: bool = False):
@@ -249,7 +249,7 @@ class DriftAnalyser(QualityEngine):
             p_values.plot(title='Reference sample label p-values',
                 xlabel='Percentage of remaining sample used',
                 ylabel=f'{test_name} test p-value', style='.-')
-            plt.show()
+            pltshow()
         return p_values
 
     def sample_covariate_drift(self, p_thresh: float = 0.05) -> DataFrame:
