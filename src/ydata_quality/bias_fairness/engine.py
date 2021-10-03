@@ -4,7 +4,7 @@ Implementation of BiasFairness engine to run bias and fairness analysis.
 
 from typing import List, Optional
 
-import pandas as pd
+from pandas import DataFrame, Series
 from dython.nominal import compute_associations
 
 from ..core import QualityEngine, QualityWarning
@@ -21,11 +21,11 @@ class BiasFairness(QualityEngine):
         - Performance Discrimination: checks for performance disparities on sensitive attributes
     """
 
-    def __init__(self, df: pd.DataFrame, sensitive_features: List[str], label: Optional[str] = None,
+    def __init__(self, df: DataFrame, sensitive_features: List[str], label: Optional[str] = None,
                  random_state: Optional[int] = None, severity: Optional[str] = None):
         """
         Args
-            df (pd.DataFrame): reference DataFrame used to run the analysis
+            df (DataFrame): reference DataFrame used to run the analysis
             sensitive_features (List[str]): features deemed as sensitive attributes
             label (str, optional): target feature to be predicted
             severity (str, optional): Sets the logger warning threshold to one of the valid levels
@@ -70,7 +70,7 @@ class BiasFairness(QualityEngine):
         """
         drop_features = self.sensitive_features + [self.label]  # features to remove in prediction
 
-        performances = pd.Series(index=self.sensitive_features, dtype=str)
+        performances = Series(index=self.sensitive_features, dtype=str)
         for feat in performances.index:
             data = self.df.drop(columns=[x for x in drop_features if x != feat])  # drop all except target
             performances[feat] = baseline_performance(df=data, label=feat, adjusted_metric=adjusted_metric)
@@ -99,7 +99,7 @@ class BiasFairness(QualityEngine):
 
         res = {}
         for feat in self.sensitive_features:
-            res[feat] = pd.Series(performance_per_feature_values(df=self.df, feature=feat, label=self.label))
+            res[feat] = Series(performance_per_feature_values(df=self.df, feature=feat, label=self.label))
         return res
 
     def sensitive_representativity(self, min_pct: float = 0.01):

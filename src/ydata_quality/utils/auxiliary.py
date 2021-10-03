@@ -5,7 +5,8 @@ Auxiliary utility methods, IO, processing, etc.
 from typing import Union, Tuple
 import json
 
-import pandas as pd
+from pandas import DataFrame, Series, Index, DatetimeIndex, PeriodIndex, TimedeltaIndex
+from pandas.api.types import infer_dtype
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -30,12 +31,12 @@ def test_load_json_path(json_path: str) -> dict:
     return json_dict
 
 
-def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float,
-                 shuffle: bool = True, random_state: int = None) -> Tuple[pd.DataFrame]:
+def random_split(df: Union[DataFrame, Series], split_size: float,
+                 shuffle: bool = True, random_state: int = None) -> Tuple[DataFrame]:
     """Shuffles a DataFrame and splits it into 2 partitions according to split_size.
     Returns a tuple with the split first (partition corresponding to split_size, and remaining second).
     Args:
-        df (pd.DataFrame): A DataFrame to be split
+        df (DataFrame): A DataFrame to be split
         split_size (float): Fraction of the sample to be taken
         shuffle (bool): If True shuffles sample rows before splitting
         random_state (int): If an int is passed, the random process is reproducible using the provided seed"""
@@ -50,11 +51,11 @@ def random_split(df: Union[pd.DataFrame, pd.Series], split_size: float,
     return split, remainder
 
 
-def min_max_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
+def min_max_normalize(df: DataFrame, dtypes: dict) -> DataFrame:
     """Applies min-max normalization to the numerical features of the dataframe.
 
     Args:
-        df (pd.DataFrame): DataFrame to be normalized
+        df (DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
     numeric_features = [col for col in df.columns if dtypes.get(col) == 'numerical']
     if numeric_features:
@@ -63,11 +64,11 @@ def min_max_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
     return df
 
 
-def standard_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
+def standard_normalize(df: DataFrame, dtypes: dict) -> DataFrame:
     """Applies standard normalization (z-score) to the numerical features of the dataframe.
 
     Args:
-        df (pd.DataFrame): DataFrame to be normalized
+        df (DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
     numeric_features = [col for col in df.columns if dtypes.get(col) == 'numerical']
     if numeric_features:
@@ -76,7 +77,7 @@ def standard_normalize(df: pd.DataFrame, dtypes: dict) -> pd.DataFrame:
     return df
 
 
-def find_duplicate_columns(df: pd.DataFrame, is_close=False) -> dict:
+def find_duplicate_columns(df: DataFrame, is_close=False) -> dict:
     """Returns a mapping dictionary of columns with fully duplicated feature values.
 
     Arguments:
@@ -90,11 +91,10 @@ def find_duplicate_columns(df: pd.DataFrame, is_close=False) -> dict:
     return dups
 
 
-def infer_dtypes(df: Union[pd.DataFrame, pd.Series], skip: Union[list, set] = []):
+def infer_dtypes(df: Union[DataFrame, Series], skip: Union[list, set] = []):
     """Simple inference method to return a dictionary with list of numeric_features and categorical_features
     Note: The objective is not to substitute the need for passed dtypes but rather to provide expedite inferal between
     numerical or categorical features"""
-    infer = pd.api.types.infer_dtype
     dtypes = {}
     as_categorical = ['string',
                       'bytes',
@@ -103,27 +103,27 @@ def infer_dtypes(df: Union[pd.DataFrame, pd.Series], skip: Union[list, set] = []
                       'categorical',
                       'boolean',
                       'mixed']
-    if isinstance(df, pd.DataFrame):
+    if isinstance(df, DataFrame):
         for column in df.columns:
             if column in skip:
                 continue
-            if infer(df[column]) in as_categorical:
+            if infer_dtype(df[column]) in as_categorical:
                 dtypes[column] = 'categorical'
             else:
                 dtypes[column] = 'numerical'
-    elif isinstance(df, pd.Series):
-        dtypes[df.name] = 'categorical' if infer(df) in as_categorical else 'numerical'
+    elif isinstance(df, Series):
+        dtypes[df.name] = 'categorical' if infer_dtype(df) in as_categorical else 'numerical'
     return dtypes
 
 
-def check_time_index(index: pd.Index) -> bool:
+def check_time_index(index: Index) -> bool:
     """Tries to infer from passed index column if the dataframe is a timeseries or not."""
-    if isinstance(index, (pd.DatetimeIndex, pd.PeriodIndex, pd.TimedeltaIndex)):
+    if isinstance(index, (DatetimeIndex, PeriodIndex, TimedeltaIndex)):
         return True
     return False
 
 
-def infer_df_type(df: pd.DataFrame) -> DataFrameType:
+def infer_df_type(df: DataFrame) -> DataFrameType:
     """Simple inference method to dataset type."""
     if check_time_index(df.index):
         return DataFrameType.TIMESERIES
