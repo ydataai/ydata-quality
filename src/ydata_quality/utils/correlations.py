@@ -33,7 +33,7 @@ from numpy import (
 from scipy.stats import pearsonr, chi2_contingency
 from scipy.stats.distributions import chi2
 from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
-import seaborn as sb
+from seaborn import heatmap, diverging_palette
 import matplotlib.pyplot as plt
 
 from .auxiliary import find_duplicate_columns
@@ -182,9 +182,9 @@ def correlation_plotter(mat: DataFrame, title: str = '', symmetric: bool = True)
     str_trunc = lambda x: x if len(x) <= 9 else x[:4] + '...' + x[-4:]
     mat.rename(columns=str_trunc, inplace=True)
     plt.figure(figsize=(14, 14))
-    ax = sb.heatmap(
+    ax = heatmap(
         mat, cbar=True, vmin=-1, vmax=1, mask=mask if symmetric else None, annot=True, square=True,
-        cmap=sb.diverging_palette(220, 20, as_cmap=True), fmt=".0%")
+        cmap=diverging_palette(220, 20, as_cmap=True), fmt=".0%")
     if title:
         ax.set_title(title)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, size=8)
