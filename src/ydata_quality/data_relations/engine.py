@@ -3,8 +3,8 @@ Implementation of DataRelationsDetector engine to run data relations analysis.
 """
 from typing import Optional, Tuple, List
 
-import numpy as np
 from pandas import DataFrame
+from numpy import ones, tril, argwhere
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import (correlation_matrix,
@@ -109,11 +109,11 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient above threshold and partial coefficient below threshold indicate existence of confounding effects."""
-        mask = np.ones(corr_mat.shape, dtype='bool')
-        mask[np.tril(mask)] = False  # Drop pairs below diagonal
+        mask = ones(corr_mat.shape, dtype='bool')
+        mask[tril(mask)] = False  # Drop pairs below diagonal
         mask[corr_mat.abs() <= corr_th] = False  # Drop pairs with zero order correlation below threshold
         mask[par_corr_mat.abs() > corr_th] = False  # Drop pairs with correlation after controling all other covariates
-        confounded_pairs = [(corr_mat.index[i], corr_mat.columns[j]) for i, j in np.argwhere(mask)]
+        confounded_pairs = [(corr_mat.index[i], corr_mat.columns[j]) for i, j in argwhere(mask)]
         if len(confounded_pairs) > 0:
             self.store_warning(QualityWarning(
                 test='Confounded correlations', category='Data Relations', priority=2, data=confounded_pairs,
@@ -129,11 +129,11 @@ class DataRelationsDetector(QualityEngine):
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
         Zero order coefficient below threshold and partial coefficient above threshold indicate existence of collider effects."""
-        mask = np.ones(corr_mat.shape, dtype='bool')
-        mask[np.tril(mask)] = False  # Drop pairs below diagonal
+        mask = ones(corr_mat.shape, dtype='bool')
+        mask[tril(mask)] = False  # Drop pairs below diagonal
         mask[corr_mat.abs() > corr_th] = False  # Drop pairs with zero order correlation above threshold
         mask[par_corr_mat.abs() <= corr_th] = False  # Drop pairs with correlation after controling all other covariates
-        colliding_pairs = [(corr_mat.index[i], corr_mat.columns[j]) for i, j in np.argwhere(mask)]
+        colliding_pairs = [(corr_mat.index[i], corr_mat.columns[j]) for i, j in argwhere(mask)]
         if len(colliding_pairs) > 0:
             self.store_warning(QualityWarning(
                 test='Collider correlations', category='Data Relations', priority=2, data=colliding_pairs,
@@ -151,9 +151,9 @@ class DataRelationsDetector(QualityEngine):
         assert label in corr_mat.columns, "The provided label {} does not exist as a column in the DataFrame.".format(
             label)
         label_corrs = corr_mat.loc[label].drop(label)
-        mask = np.ones(label_corrs.shape, dtype='bool')
+        mask = ones(label_corrs.shape, dtype='bool')
         mask[label_corrs.abs() <= corr_th] = False  # Drop pairs with zero order correlation below threshold
-        important_feats = [label_corrs.index[i][0] for i in np.argwhere(mask)]
+        important_feats = [label_corrs.index[i][0] for i in argwhere(mask)]
         summary = "[FEATURE IMPORTANCE] No important features were found in explaining {}. You might want to try lowering corr_th.".format(
             label)
         if len(important_feats) > 0:

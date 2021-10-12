@@ -6,13 +6,35 @@ from itertools import combinations
 from typing import List, Optional
 import warnings
 
-import numpy as np
 from pandas import DataFrame, Series, crosstab
-import scipy.stats as ss
+from numpy.linalg import pinv
+from numpy import (
+    nan,
+    fill_diagonal,
+    ndarray,
+    max as npmax,
+    square,
+    min as npmin,
+    sqrt,
+    unique,
+    zeros,
+    average,
+    where,
+    sum as npsum,
+    multiply,
+    subtract,
+    ones,
+    identity,
+    diag,
+    zeros_like,
+    isnan,
+    triu_indices_from,
+)
+from scipy.stats import pearsonr, chi2_contingency
 from scipy.stats.distributions import chi2
 from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
-import seaborn as sb
-import matplotlib.pyplot as plt
+from seaborn import heatmap, diverging_palette
+from matplotlib.pyplot import show as pltshow, figure as pltfigure
 
 from .auxiliary import find_duplicate_columns
 
@@ -34,7 +56,7 @@ def filter_associations(corrs: DataFrame, th: float,
     """
     # TODO: replace in high_missing_correlations method of missings engine
     corrs = corrs.copy()  # keep original
-    np.fill_diagonal(corrs.values, np.nan)  # remove the same column pairs
+    fill_diagonal(corrs.values, nan)  # remove the same column pairs
     corrs = corrs[subset] if subset is not None else corrs  # subset features
     corrs = corrs[(corrs > th) | (corrs < -th)].melt(ignore_index=False).reset_index().dropna()  # subset by threshold
     corrs['features'] = ['_'.join(sorted((i.index, i.variable)))
@@ -45,51 +67,51 @@ def filter_associations(corrs: DataFrame, th: float,
     return corrs
 
 
-def pearson_correlation(col1: np.ndarray, col2: np.ndarray) -> float:
+def pearson_correlation(col1: ndarray, col2: ndarray) -> float:
     """Returns Pearson's correlation coefficient for col1 and col2.
     Used for numerical - numerical variable pairs.
 
     Args:
-        col1 (np.ndarray): A numerical column with no null values
-        col2 (np.ndarray): A numerical column with no null values"""
-    return ss.pearsonr(col1, col2)[0]
+        col1 (ndarray): A numerical column with no null values
+        col2 (ndarray): A numerical column with no null values"""
+    return pearsonr(col1, col2)[0]
 
 
-def unbiased_cramers_v(col1: np.ndarray, col2: np.ndarray) -> float:
+def unbiased_cramers_v(col1: ndarray, col2: ndarray) -> float:
     """Returns the unbiased Cramer's V correlation coefficient for col1 and col2.
     Used for categorical - categorical variable pairs.
 
     Args:
-        col1 (np.ndarray): A categorical column with no null values
-        col2 (np.ndarray): A categorical column with no null values"""
+        col1 (ndarray): A categorical column with no null values
+        col2 (ndarray): A categorical column with no null values"""
     n = col1.size
     contingency_table = crosstab(col1, col2)
-    chi_sq = ss.chi2_contingency(contingency_table)[0]
+    chi_sq = chi2_contingency(contingency_table)[0]
     phi_sq = chi_sq / n
     r, k = contingency_table.shape
-    phi_sq_hat = np.max([0, phi_sq - ((r - 1) * (k - 1)) / (n - 1)])
-    k_hat = k - np.square(k - 1) / (n - 1)
-    r_hat = r - np.square(r - 1) / (n - 1)
-    return np.sqrt(phi_sq_hat / np.min([k_hat - 1, r_hat - 1]))  # Note: this is strictly positive
+    phi_sq_hat = npmax([0, phi_sq - ((r - 1) * (k - 1)) / (n - 1)])
+    k_hat = k - square(k - 1) / (n - 1)
+    r_hat = r - square(r - 1) / (n - 1)
+    return sqrt(phi_sq_hat / npmin([k_hat - 1, r_hat - 1]))  # Note: this is strictly positive
 
 
-def correlation_ratio(col1: np.ndarray, col2: np.ndarray) -> float:
+def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
     """Returns the correlation ratio for col1 and col2.
     Used for categorical - numerical variable pairs.
 
     Args:
-        col1 (np.ndarray): A categorical column with no null values
-        col2 (np.ndarray): A numerical column with no null values"""
-    uniques = np.unique(col1)
-    yx_hat = np.zeros(len(uniques))
-    counts = np.zeros(len(uniques))
+        col1 (ndarray): A categorical column with no null values
+        col2 (ndarray): A numerical column with no null values"""
+    uniques = unique(col1)
+    yx_hat = zeros(len(uniques))
+    counts = zeros(len(uniques))
     for i, value in enumerate(uniques):
-        yx = col2[np.where(col1 == value)]
+        yx = col2[where(col1 == value)]
         counts[i] = yx.size
-        yx_hat[i] = np.average(yx)
-    y_hat = np.average(yx_hat, weights=counts)
-    eta_2 = np.sum(np.multiply(counts, np.square(np.subtract(yx_hat, y_hat)))) / np.sum(np.square(np.subtract(col2, y_hat)))  # noqa
-    return np.sqrt(eta_2)  # Note: this is strictly positive
+        yx_hat[i] = average(yx)
+    y_hat = average(yx_hat, weights=counts)
+    eta_2 = npsum(multiply(counts, square(subtract(yx_hat, y_hat)))) / npsum(square(subtract(col2, y_hat)))  # noqa
+    return sqrt(eta_2)  # Note: this is strictly positive
 
 
 def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> DataFrame:
@@ -101,8 +123,8 @@ def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> 
         ('numerical', 'numerical'): pearson_correlation,
     }
     # TODO: p-values for every correlation function, to support Data Relations logic
-    corr_mat = DataFrame(data=np.identity(n=len(df.columns)), index=df.columns, columns=df.columns)
-    p_vals = DataFrame(data=np.ones(shape=corr_mat.shape), index=df.columns, columns=df.columns)
+    corr_mat = DataFrame(data=identity(n=len(df.columns)), index=df.columns, columns=df.columns)
+    p_vals = DataFrame(data=ones(shape=corr_mat.shape), index=df.columns, columns=df.columns)
     has_values = df.notnull().values
     df = df.values
     for i, col1 in enumerate(corr_mat):
@@ -133,13 +155,13 @@ def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> 
 def partial_correlation_matrix(corr_matrix: DataFrame) -> DataFrame:
     """Returns the matrix of full order partial correlations.
     Uses the covariance matrix inversion method."""
-    inv_corr_matrix = np.linalg.pinv(corr_matrix)
-    diag = np.diag(inv_corr_matrix)
-    if np.isnan(diag).any() or (diag <= 0).any():
+    inv_corr_matrix = pinv(corr_matrix)
+    _diag = diag(inv_corr_matrix)
+    if isnan(_diag).any() or (_diag <= 0).any():
         return None
-    scaled_diag = np.diag(np.sqrt(1 / diag))
+    scaled_diag = diag(sqrt(1 / _diag))
     partial_corr_matrix = -1 * (scaled_diag @ inv_corr_matrix @ scaled_diag)
-    np.fill_diagonal(partial_corr_matrix, 1)  # Fixing scaling setting the diagonal to -1
+    fill_diagonal(partial_corr_matrix, 1)  # Fixing scaling setting the diagonal to -1
     return DataFrame(data=partial_corr_matrix, index=corr_matrix.index, columns=corr_matrix.columns)
 
 
@@ -154,19 +176,19 @@ def correlation_plotter(mat: DataFrame, title: str = '', symmetric: bool = True)
     mask = None
     if symmetric:
         mat = mat.iloc[1:, :-1]
-        mask = np.zeros_like(mat)
-        mask[np.triu_indices_from(mask, 1)] = True
+        mask = zeros_like(mat)
+        mask[triu_indices_from(mask, 1)] = True
 
     str_trunc = lambda x: x if len(x) <= 9 else x[:4] + '...' + x[-4:]
     mat.rename(columns=str_trunc, inplace=True)
-    plt.figure(figsize=(14, 14))
-    ax = sb.heatmap(
+    pltfigure(figsize=(14, 14))
+    ax = heatmap(
         mat, cbar=True, vmin=-1, vmax=1, mask=mask if symmetric else None, annot=True, square=True,
-        cmap=sb.diverging_palette(220, 20, as_cmap=True), fmt=".0%")
+        cmap=diverging_palette(220, 20, as_cmap=True), fmt=".0%")
     if title:
         ax.set_title(title)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, size=8)
-    plt.show()
+    pltshow()
 
 
 def vif_collinearity(data: DataFrame, dtypes: dict, label: str = None) -> Series:
@@ -197,7 +219,7 @@ def chi2_collinearity(data: DataFrame, dtypes: dict, p_th: float, label: str = N
     crit_chis = {}
     for comb in combs:
         cont = crosstab(data[comb[0]], data[comb[1]])
-        chi, p, dof, _ = ss.chi2_contingency(cont)
+        chi, p, dof, _ = chi2_contingency(cont)
         crit_chi = crit_chis.setdefault(dof, chi2.ppf(1 - p_th, dof))
         if chi > crit_chi:
             adj_chi = chi

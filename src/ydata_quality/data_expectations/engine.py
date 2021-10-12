@@ -3,8 +3,8 @@ Implementation of DataExpectationsReporter engine to run data expectations valid
 """
 from typing import Optional
 
-import numpy as np
 from pandas import DataFrame
+from numpy import argmin
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import test_load_json_path
@@ -43,7 +43,7 @@ class DataExpectationsReporter(QualityEngine):
         column_name = expectation_summary['kwargs']['column']
         bounds = [expectation_summary['kwargs'][bound] for bound in ['min_value', 'max_value']]
         abs_dist_bounds = [abs(observed - bound) for bound in bounds]
-        nearest_bound = bounds[np.argmin(abs_dist_bounds)]
+        nearest_bound = bounds[argmin(abs_dist_bounds)]
         range_width = bounds[1] - bounds[0]
         deviation = observed - nearest_bound
         if range_width != 0:

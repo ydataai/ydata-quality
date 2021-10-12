@@ -2,8 +2,8 @@
 Utilities based on building baseline machine learning models.
 """
 
-import numpy as np
-import pandas as pd
+from pandas import DataFrame, Series
+from numpy import mean, tile, empty, std, square, sqrt, log as nplog, reciprocal
 from scipy.stats import boxcox, normaltest, mode
 from sklearn.compose import ColumnTransformer
 from sklearn.exceptions import ConvergenceWarning, DataConversionWarning
@@ -42,7 +42,7 @@ CATEGORICAL_TRANSFORMER = Pipeline([
 ORDINAL_TRANSFORMER = None  # Not implemented
 
 
-def get_prediction_task(df: pd.DataFrame, label: str):
+def get_prediction_task(df: DataFrame, label: str):
     "Heuristics to infer prediction task (classification/regression)."
     # TODO: Improve prediction type guesstimate based on alternative heuristics (e.g. dtypes, value_counts)
 
@@ -50,7 +50,7 @@ def get_prediction_task(df: pd.DataFrame, label: str):
 
 
 @ignore_warnings(category=ConvergenceWarning)
-def baseline_predictions(df: pd.DataFrame, label: str, task='classification'):
+def baseline_predictions(df: DataFrame, label: str, task='classification'):
     "Train a baseline model and predict for a test set"
 
     # 0. Infer the prediction task
@@ -75,13 +75,13 @@ def baseline_predictions(df: pd.DataFrame, label: str, task='classification'):
 
 
 @ignore_warnings(category=DataConversionWarning)
-def baseline_performance(df: pd.DataFrame, label: str,
+def baseline_performance(df: DataFrame, label: str,
                          task: PredictionTask = PredictionTask.CLASSIFICATION,
                          adjusted_metric: bool = False):
     """Train a baseline model, predict for a test set and return the performance.
 
     Args:
-        - df (pd.DataFrame): original dataset
+        - df (DataFrame): original dataset
         - label (str): name of target feature column
         - task (PredictionTask): classification, regression
         - adjusted_metric (bool): if True, return metric as percentage of max achievable performance
@@ -110,8 +110,8 @@ def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable)
     Returns the percentage to the best achievable performance starting from a baseline.
     """
     task = PredictionTask(task)
-    y_default = np.mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0]  # define the value
-    y_base = np.tile(y_default, (len(y_true), 1))  # create an array with default value
+    y_default = mean(y_true) if task == PredictionTask.CLASSIFICATION else mode(y_true).mode[0]  # define the value
+    y_base = tile(y_default, (len(y_true), 1))  # create an array with default value
 
     best_perf = metric(y_true, y_true)
     base_perf = metric(y_true, y_base)
@@ -121,7 +121,7 @@ def adjusted_performance(y_true, y_pred, task: PredictionTask, metric: callable)
 
 
 @ignore_warnings(category=DataConversionWarning)
-def performance_per_feature_values(df: pd.DataFrame, feature: str, label: str, task='classification'):
+def performance_per_feature_values(df: DataFrame, feature: str, label: str, task='classification'):
     """Performance achieved per each value of a groupby feature."""
 
     # 0. Infer the prediction task
@@ -147,7 +147,7 @@ def performance_per_feature_values(df: pd.DataFrame, feature: str, label: str, t
     return results
 
 
-def performance_per_missing_value(df: pd.DataFrame, feature: str, label: str, task='classification'):
+def performance_per_missing_value(df: DataFrame, feature: str, label: str, task='classification'):
     """Performance difference between valued and missing values in feature."""
 
     # 0. Infer the prediction task
@@ -168,7 +168,7 @@ def performance_per_missing_value(df: pd.DataFrame, feature: str, label: str, ta
 
 
 @ignore_warnings(category=ConvergenceWarning)
-def predict_missingness(df: pd.DataFrame, feature: str):
+def predict_missingness(df: DataFrame, feature: str):
     "Train a baseline model to predict the missingness of a feature value."
     # 0. Preprocessing
     df = df.copy()  # avoid altering the original DataFrame
@@ -216,11 +216,11 @@ def standard_transform(df, dtypes, skip=[], robust=False):
             ('cat', Pipeline([('impute', SimpleImputer(strategy='most_frequent'))]), categorical_features)],
         remainder='passthrough')
     new_column_order = numerical_features + categorical_features + skip
-    tdf = pd.DataFrame(preprocessor.fit_transform(df), index=df.index, columns=new_column_order)
+    tdf = DataFrame(preprocessor.fit_transform(df), index=df.index, columns=new_column_order)
     return tdf, preprocessor
 
 
-def performance_one_vs_rest(df: pd.DataFrame, label_feat: str, _class: str, dtypes=None):
+def performance_one_vs_rest(df: DataFrame, label_feat: str, _class: str, dtypes=None):
     """Train a classifier to predict a class in binary fashion against all other classes.
     A normalized dataframe should be passed for best results"""
     # 0. Preprocessing
@@ -246,7 +246,7 @@ def performance_one_vs_rest(df: pd.DataFrame, label_feat: str, _class: str, dtyp
     return roc_auc_score(y_test, y_pred)
 
 
-def estimate_centroid(df: pd.DataFrame, dtypes: dict = None):
+def estimate_centroid(df: DataFrame, dtypes: dict = None):
     """Makes a centroid estimation for a given dataframe.
     Will use provided dtypes or infer in order to use best statistic columnwise"""
     if dtypes:
@@ -254,19 +254,19 @@ def estimate_centroid(df: pd.DataFrame, dtypes: dict = None):
             dtypes = dtypes.update(infer_dtypes(df, skip=dtypes.columns))
     else:
         dtypes = infer_dtypes(df)
-    centroid = pd.Series(df.iloc[0])
+    centroid = Series(df.iloc[0])
     for col in centroid.index:
-        statistic = lambda x: pd.Series.mean(x) if dtypes[col] == 'numerical' else pd.Series.mode(x)[0]
+        statistic = lambda x: Series.mean(x) if dtypes[col] == 'numerical' else Series.mode(x)[0]
         centroid[col] = statistic(df[col])
     return centroid
 
 
-def heom(x: pd.DataFrame, y, dtypes):
+def heom(x: DataFrame, y, dtypes):
     """Implements the Heterogeneous Euclidean-Overlap Metric between a sample x and a reference y.
     The data is assumed to already be preprocessed (normalized and imputed).
     [1]From 1997 Wilson, D. Randall; Martinez, Tony R. - Improved Heterogeneous Distance Functions https://arxiv.org/pdf/cs/9701101.pdf
     """
-    distances = pd.DataFrame(np.empty(x.shape), index=x.index, columns=x.columns)
+    distances = DataFrame(empty(x.shape), index=x.index, columns=x.columns)
     distance_funcs = {'categorical': lambda x, y: 0 if x == y else 1,
                       'numerical': lambda x, y: abs(x - y)}  # Note, here we are assuming the data to be previously scaled
     for i, column in enumerate(distances.columns):
@@ -274,7 +274,7 @@ def heom(x: pd.DataFrame, y, dtypes):
     return distances
 
 
-def estimate_sd(sample: pd.DataFrame, reference=None, dtypes=None):
+def estimate_sd(sample: DataFrame, reference=None, dtypes=None):
     """Estimates the standard deviation of a sample of records.
     A reference can be passed in order to avoid new computation of mean or to use distances to another reference point.
     The reference is expected as a (1, N) array where N is the number of columns in the sample.
@@ -293,8 +293,8 @@ def estimate_sd(sample: pd.DataFrame, reference=None, dtypes=None):
         assert len(reference) == len(
             sample.columns), "The provided reference point does not have the same dimension as the sample records"
     distances = heom(x=sample, y=reference, dtypes=dtypes)
-    euclidean_distances = (distances.apply(np.square).sum(axis=1) / len(sample.columns)).apply(np.sqrt)
-    std_dev = np.std(euclidean_distances)
+    euclidean_distances = (distances.apply(square).sum(axis=1) / len(sample.columns)).apply(sqrt)
+    std_dev = std(euclidean_distances)
     std_distances = euclidean_distances / std_dev
     return std_dev, std_distances
 
@@ -314,9 +314,9 @@ def normality_test(data, suite='full', p_th=5e-3):
         result: True if any transformation led to a positive normal test, False otherwise
         test: The first test in the suite to lead to positive normal test"""
     transforms = {None: lambda x: x,
-                  'inverse': np.reciprocal,
-                  'square root': np.sqrt,
-                  'log': np.log,
+                  'inverse': reciprocal,
+                  'square root': sqrt,
+                  'log': nplog,
                   'Box Cox': boxcox}
     if suite == 'full':
         suite = transforms.keys()

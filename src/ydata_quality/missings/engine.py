@@ -3,8 +3,8 @@ Implementation of MissingProfiler engine to run missing value analysis.
 """
 from typing import List, Optional, Union
 
-import numpy as np
 from pandas import DataFrame, Series
+from numpy import fill_diagonal
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.modelling import baseline_performance, performance_per_missing_value, predict_missingness
@@ -85,7 +85,7 @@ class MissingsProfiler(QualityEngine):
         "Returns a list of correlation pairs with high correlation of missing values."
 
         corrs = self.missing_correlations().abs()        # compute the absolute correlation
-        np.fill_diagonal(corrs.values, -1)               # remove the same column pairs
+        fill_diagonal(corrs.values, -1)               # remove the same column pairs
         corrs = corrs[corrs > th].melt(ignore_index=False).reset_index().dropna()  # subset by threshold
 
         # TODO: For acyclical correlation measures (e.g. Theil's U), store direction as well
