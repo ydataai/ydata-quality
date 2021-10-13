@@ -2,9 +2,9 @@
 Utilities for feature correlations.
 """
 
+import warnings
 from itertools import combinations
 from typing import List, Optional
-import warnings
 
 from pandas import DataFrame, Series, crosstab
 from numpy.linalg import pinv
@@ -36,7 +36,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor as vi
 from seaborn import heatmap, diverging_palette
 from matplotlib.pyplot import show as pltshow, figure as pltfigure
 
-from .auxiliary import find_duplicate_columns
+from .auxiliary import drop_column_list, find_duplicate_columns
 
 
 def filter_associations(corrs: DataFrame, th: float,
@@ -54,7 +54,6 @@ def filter_associations(corrs: DataFrame, th: float,
     Returns
         corrs (Series): map of feature_pair to association metric value, filtered
     """
-    # TODO: replace in high_missing_correlations method of missings engine
     corrs = corrs.copy()  # keep original
     fill_diagonal(corrs.values, nan)  # remove the same column pairs
     corrs = corrs[subset] if subset is not None else corrs  # subset features
@@ -114,6 +113,7 @@ def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
     return sqrt(eta_2)  # Note: this is strictly positive
 
 
+# pylint: disable=too-many-locals
 def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> DataFrame:
     """Returns the correlation matrix.
     The methods used for computing correlations are mapped according to the column dtypes of each pair."""
@@ -127,28 +127,26 @@ def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> 
     p_vals = DataFrame(data=ones(shape=corr_mat.shape), index=df.columns, columns=df.columns)
     has_values = df.notnull().values
     df = df.values
-    for i, col1 in enumerate(corr_mat):
+    for row_count, col1 in enumerate(corr_mat):
         dtype1 = dtypes[col1]
-        for j, col2 in enumerate(corr_mat):
-            if i >= j:
+        for col_count, col2 in enumerate(corr_mat):
+            if row_count >= col_count:
                 continue  # Diagonal was filled from the start, lower triangle is equal to top triangle
             dtype2 = dtypes[col2]
-            dtype_sorted_ixs = sorted(list(zip([i, j], [dtype1, dtype2])), key=lambda x: x[1])
-            key = tuple([col_dtype[1] for col_dtype in dtype_sorted_ixs])
-            is_valid = has_values[:, i] & has_values[:, j]  # Valid indexes for computation
+            dtype_sorted_ixs = sorted(list(zip([row_count, col_count], [dtype1, dtype2])), key=lambda x: x[1])
+            key = tuple(col_dtype[1] for col_dtype in dtype_sorted_ixs)
+            is_valid = has_values[:, row_count] & has_values[:, col_count]  # Valid indexes for computation
             try:
                 vals = [df[is_valid, col_dtype[0]] for col_dtype in dtype_sorted_ixs]
                 corr = corr_funcs[key](*vals)
-            except BaseException:
+            except ValueError:
                 corr = None  # Computation failed
             corr_mat.loc[col1, col2] = corr_mat.loc[col2, col1] = corr
     if drop_dups:
         # Find duplicate row lists in absolute correlation matrix
-        dup_lists = find_duplicate_columns(corr_mat.abs(), True)
-        for col, dup_list in dup_lists.items():
-            if col in corr_mat.columns:  # Ensures we will not drop both members of duplicate pairs
-                corr_mat.drop(columns=dup_list, index=dup_list, inplace=True)
-                p_vals.drop(columns=dup_list, index=dup_list, inplace=True)
+        dup_pairs = find_duplicate_columns(corr_mat.abs(), True)
+        drop_column_list(corr_mat, dup_pairs)
+        drop_column_list(p_vals, dup_pairs)
     return corr_mat, p_vals
 
 
@@ -203,11 +201,12 @@ def vif_collinearity(data: DataFrame, dtypes: dict, label: str = None) -> Series
     return Series(data=vifs, index=num_columns).sort_values(ascending=False)
 
 
+# pylint: disable=too-many-locals
 def chi2_collinearity(data: DataFrame, dtypes: dict, p_th: float, label: str = None) -> DataFrame:
     """Applies chi-squared test on all combinations of categorical variable pairs in a dataset.
     Disregards the label feature.
     Returns the average of chi-sq statistics found for significant tests (p<p_th) for each categorical variable.
-    Returns also the adjusted chi2, i.e. the equivalent chi2 statistic that produces the same p-value in 2 degrees of freedom."""
+    Returns also the adjusted chi2, i.e. the chi2 statistic that produces the same p-value in 2 degrees of freedom."""
     cat_vars = sorted([col for col in data.columns if (dtypes[col] == 'categorical' and col != label)])
     combs = list(combinations(cat_vars, 2))
     chis = {'Var1': [],
@@ -224,7 +223,7 @@ def chi2_collinearity(data: DataFrame, dtypes: dict, p_th: float, label: str = N
         if chi > crit_chi:
             adj_chi = chi
             if dof != 2:
-                adj_chi = chi2.ppf(1 - p, 2)
-            for list_, value in zip(chis.values(), [comb[0], comb[1], adj_chi, p, chi, dof]):
+                adj_chi = chi2.ppf(1 - p_stat, 2)
+            for list_, value in zip(chis.values(), [comb[0], comb[1], adj_chi, p_stat, chi, dof]):
                 list_.append(value)
     return DataFrame(data=chis).sort_values(by='p-value', ascending=True).reset_index(drop=True)

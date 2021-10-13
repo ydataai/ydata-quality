@@ -1,19 +1,17 @@
 """
 Implementation of DataRelationsDetector engine to run data relations analysis.
 """
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 from pandas import DataFrame
 from numpy import ones, tril, argwhere
 
 from ..core import QualityEngine, QualityWarning
-from ..utils.correlations import (correlation_matrix,
-                                  partial_correlation_matrix,
-                                  correlation_plotter,
-                                  vif_collinearity,
-                                  chi2_collinearity)
 from ..utils.auxiliary import infer_dtypes, standard_normalize
-from ..utils.logger import get_logger, NAME
+from ..utils.correlations import (chi2_collinearity, correlation_matrix,
+                                  correlation_plotter,
+                                  partial_correlation_matrix, vif_collinearity)
+from ..utils.logger import NAME, get_logger
 
 
 class DataRelationsDetector(QualityEngine):
@@ -49,7 +47,7 @@ class DataRelationsDetector(QualityEngine):
         wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
         if len(wrong_dtypes) > 0:
             self._logger.warning(
-                f"Columns {wrong_dtypes} of dtypes where not defined with a supported dtype and will be inferred.")
+                "Columns %s of dtypes where not defined with a supported dtype and will be inferred.", wrong_dtypes)
         dtypes = {key: val for key, val in dtypes.items() if key not in cols_not_in_df + wrong_dtypes}
         df_col_set = set(df.columns)
         dtypes_col_set = set(dtypes.keys())
@@ -60,10 +58,11 @@ class DataRelationsDetector(QualityEngine):
                 dtypes[col] = dtype
         self._dtypes = dtypes
 
-    def evaluate(self, df: DataFrame, dtypes: Optional[dict] = None, label: str=None, corr_th: float=0.8,  
-                 vif_th: float=5, p_th: float=0.05, plot: bool=True, summary=True) -> dict:
+    # pylint: disable=too-many-arguments, arguments-differ
+    def evaluate(self, df: DataFrame, dtypes: Optional[dict] = None, label: str = None, corr_th: float = 0.8,
+                 vif_th: float = 5, p_th: float = 0.05, plot: bool = True, summary: bool = True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
-        Note, we perform standard normalization of numerical features in order to unbias VIF and partial correlation methods.
+        We perform standard normalization of numerical features in order to unbias VIF and partial correlation methods.
         This bias correction produces results equivalent to adding a constant feature to the dataset.
 
         Args:
@@ -72,10 +71,12 @@ class DataRelationsDetector(QualityEngine):
                 If a full map is not provided it will be determined/completed via inference method.
             label (Optional[str]): A string identifying the label feature column
             corr_th (float): Absolute threshold for high correlation detection. Defaults to 0.8.
-            vif_th (float): Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
-            p_th (float): Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
+            vif_th (float): Variance Inflation Factor threshold for numerical independence test.
+                Typically 5-10 is recommended. Defaults to 5.
+            p_th (float): Fraction of the right tail of the chi squared CDF.
+                Defines threshold for categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
-            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+            summary (bool): Print a report containing all the warnings detected during the data quality analysis.
         """
         assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
@@ -92,8 +93,8 @@ class DataRelationsDetector(QualityEngine):
             results['Confounders'] = self._confounder_detection(corr_mat, p_corr_mat, corr_th)
             results['Colliders'] = self._collider_detection(corr_mat, p_corr_mat, corr_th)
         else:
-            self._logger.warning(
-                'The partial correlation matrix is not computable for this dataset. Skipping potential confounder and collider detection tests.')
+            self._logger.warning('The partial correlation matrix is not computable for this dataset. \
+Skipping potential confounder and collider detection tests.')
         if label:
             results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
@@ -137,25 +138,26 @@ class DataRelationsDetector(QualityEngine):
         if len(colliding_pairs) > 0:
             self.store_warning(QualityWarning(
                 test='Collider correlations', category='Data Relations', priority=2, data=colliding_pairs,
-                description="Found {} independently uncorrelated variable pairs that showed correlation after\
- controling for the remaining variables. This is an indicator of potential colliding bias with other covariates.".format(len(colliding_pairs))))
+                description=f"Found {len(colliding_pairs)} independently uncorrelated variable pairs that showed \
+correlation after controling for the remaining variables. \
+This is an indicator of potential colliding bias with other covariates."))
         return colliding_pairs
 
-    def _feature_importance(self, corr_mat: DataFrame, par_corr_mat: DataFrame,
+    @staticmethod
+    def _feature_importance(corr_mat: DataFrame, par_corr_mat: DataFrame,
                             label: str, corr_th: float) -> DataFrame:
         """Identifies features with high importance.
         Returns all features with absolute correlation to the label higher than corr_th.
 
         This method returns a summary of all detected important features.
         The summary contains zero, full order partial correlation and a note regarding potential confounding."""
-        assert label in corr_mat.columns, "The provided label {} does not exist as a column in the DataFrame.".format(
-            label)
+        assert label in corr_mat.columns, f"The provided label {label} does not exist as a column in the DataFrame."
         label_corrs = corr_mat.loc[label].drop(label)
         mask = ones(label_corrs.shape, dtype='bool')
         mask[label_corrs.abs() <= corr_th] = False  # Drop pairs with zero order correlation below threshold
         important_feats = [label_corrs.index[i][0] for i in argwhere(mask)]
-        summary = "[FEATURE IMPORTANCE] No important features were found in explaining {}. You might want to try lowering corr_th.".format(
-            label)
+        summary = f"[FEATURE IMPORTANCE] No important features were found in explaining {label}. \
+You might want to try lowering corr_th."
         if len(important_feats) > 0:
             if par_corr_mat is not None:
                 label_pcorrs = par_corr_mat.loc[label].drop(label)
@@ -170,13 +172,16 @@ class DataRelationsDetector(QualityEngine):
             summary.sort_values(by='Correlations', ascending=False, inplace=True, key=abs)
         return summary
 
+    # pylint: disable=too-many-arguments
     def _high_collinearity_detection(self, df: DataFrame, dtypes: dict, label: str = None,
                                      vif_th: float = 10., p_th: float = 0.05) -> DataFrame:
-        """Detects independent variables with high collinearity. Categorical vars and continuous vars are studied as independent sets of variables.
+        """Detects independent variables with high collinearity.
+        Categorical vars and continuous vars are studied as independent sets of variables.
         Variance Inflation Factors are used to study continuous vars collinearity.
         Chi-squared tests are used to test categorical vars collinearity.
         Results are ranked from highest collinearity to lowest and segregated on type of variable.
         """
+        # TODO: Substitute dtypes to use class property
         vif_scores = vif_collinearity(df, dtypes, label)
         inflated = vif_scores.loc[vif_scores > vif_th]
         chi2_tests = chi2_collinearity(df, dtypes, p_th, label)

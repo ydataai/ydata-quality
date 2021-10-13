@@ -21,6 +21,7 @@ pylint:
     max-public-methods: 20
     max-module-lines: 500
     max-line-length: 120
+    good-names: df,th
 
 mccabe:
   options:

@@ -9,7 +9,8 @@ from dython.nominal import compute_associations
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations
-from ..utils.modelling import baseline_performance, performance_per_feature_values
+from ..utils.modelling import (baseline_performance,
+                               performance_per_feature_values)
 
 
 class BiasFairness(QualityEngine):
@@ -105,7 +106,8 @@ class BiasFairness(QualityEngine):
     def sensitive_representativity(self, min_pct: float = 0.01):
         """Checks categorical sensitive attributes minimum representativity of feature values.
 
-        Raises a warning if a feature value of a categorical sensitive attribute is not represented above a min_pct percentage.
+        Raises a warning if a feature value of a categorical sensitive attribute is not represented above a min_pct \
+percentage.
         """
         # TODO: Representativity for numerical features
         res = {}
@@ -122,9 +124,9 @@ class BiasFairness(QualityEngine):
             if len(low_dist) > 0:
                 self.store_warning(
                     QualityWarning(
-                        test='Sensitive Attribute Representativity', category='Bias&Fairness', priority=2, data=low_dist,
-                        description=f"Found {len(low_dist)} values of '{cat}' \
-                            sensitive attribute with low representativity in the dataset (below {min_pct*100:.2f}%)."
+                        test='Sensitive Attribute Representativity', category='Bias&Fairness', priority=2,
+                        data=low_dist, description=f"Found {len(low_dist)} values of '{cat}' \
+sensitive attribute with low representativity in the dataset (below {min_pct*100:.2f}%)."
                     )
                 )
         return res

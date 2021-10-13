@@ -8,7 +8,7 @@ from numpy import argmin
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import test_load_json_path
-from ..utils.logger import get_logger, NAME
+from ..utils.logger import NAME, get_logger
 
 
 class DataExpectationsReporter(QualityEngine):
@@ -48,17 +48,16 @@ class DataExpectationsReporter(QualityEngine):
         deviation = observed - nearest_bound
         if range_width != 0:
             range_deviations = deviation / range_width
-            range_deviation_string = "\n\t- The observed deviation is of {:.1f} min-max ranges.".format(
-                range_deviations)
+            range_deviation_string = f"\n\t- The observed deviation is of {range_deviations:.1f} min-max ranges."
         if nearest_bound != 0:
             bound_deviations = deviation / nearest_bound
-            bound_deviation_string = "\n\t- The observed value is {:.0%} deviated from the nearest bound of the expected\
- range.".format(bound_deviations)
+            bound_deviation_string = f"\n\t- The observed value is {bound_deviations:.0%} deviated from the nearest \
+bound of the expected range."
         self.store_warning(
             QualityWarning(
                 test='Expectation assessment - Value Between', category='Data Expectations', priority=3,
                 data=(range_deviations, bound_deviations),
-                description="Column {} - The observed value is outside of the expected range.".format(column_name)
+                description=f"Column {column_name} - The observed value is outside of the expected range."
                 + (range_deviation_string if range_deviations else "")
                 + (bound_deviation_string if bound_deviations else "")
             )
@@ -125,9 +124,8 @@ class DataExpectationsReporter(QualityEngine):
                 QualityWarning(
                     test='Coverage Fraction', category='Data Expectations', priority=2,
                     data={'Columns not covered': df_column_set.difference(column_coverage)},
-                    description="The provided DataFrame has a total expectation coverage of {:.0%} of its \
-columns, which is below the expected coverage of {:.0%}.".format(
-                        coverage_fraction, minimum_coverage)
+                    description=f"The provided DataFrame has a total expectation coverage of {coverage_fraction:.0%} \
+of its columns, which is below the expected coverage of {minimum_coverage:.0%}."
                 )
             )
         return len(column_coverage) / len(df_column_set)
@@ -151,9 +149,8 @@ columns, which is below the expected coverage of {:.0%}.".format(
                 QualityWarning(
                     test='Overall Assessment', category='Data Expectations', priority=2,
                     data={'Failed expectation indexes': failed_expectation_ids},
-                    description="{} expectations have failed, which is more than the implied absolute threshold of {} \
-failed expectations.".format(
-                        len(failed_expectation_ids), int(error_tol))
+                    description=f"{len(failed_expectation_ids)} expectations have failed, which is more than the \
+implied absolute threshold of {int(error_tol)} failed expectations."
                 )
             )
         return failed_expectation_ids
@@ -183,9 +180,10 @@ failed expectations.".format(
             expectation_level_report.iloc[idx_] = [expectation_type, result, error_metric]
         return (expectation_level_report, {idx: expectations_summary[idx] for idx in expectation_level_report.index})
 
+    # pylint: disable=too-many-arguments, arguments-differ
     def evaluate(self, results_json_path: str, df: DataFrame = None, error_tol: int = 0,
-                rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75,
-                summary: bool = True) -> dict:
+                 rel_error_tol: Optional[float] = None, minimum_coverage: Optional[float] = 0.75,
+                 summary: bool = True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
 
         Args:
@@ -194,7 +192,7 @@ failed expectations.".format(
             error_tol (int): Defines how many failed expectations are tolerated.
             rel_error_tol (float): Defines the maximum fraction of failed expectations, overrides error_tol.
             minimum_coverage (float): Minimum expected fraction of DataFrame columns covered by the expectation suite.
-            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+            summary (bool): Prints a report containing all the warnings detected during the data quality analysis.
         """
         df = df if isinstance(df, DataFrame) else None
         results = {}

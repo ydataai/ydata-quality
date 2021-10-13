@@ -1,9 +1,8 @@
 """
 Auxiliary utility methods, IO, processing, etc.
 """
-
-from typing import Union, Tuple
 import json
+from typing import Optional, Tuple, Union
 
 from pandas import DataFrame, Series, Index, DatetimeIndex, PeriodIndex, TimedeltaIndex
 from pandas.api.types import infer_dtype
@@ -13,7 +12,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from .enum import DataFrameType
 
 
-def test_load_json_path(json_path: str) -> dict:
+def test_load_json_path(json_path: str, encoding: Optional[str] = None) -> dict:
     """Tests file existence from given path and attempts to parse as a json dictionary.
 
     Args:
@@ -22,8 +21,7 @@ def test_load_json_path(json_path: str) -> dict:
         json_dict (dict): The json dictionary loaded as Python dictionary.
     """
     if isinstance(json_path, str):
-        # pylint: disable=unspecified-encoding
-        with open(json_path, 'r') as b_stream:
+        with open(json_path, 'r', encoding=encoding) as b_stream:
             data = b_stream.read()
         json_dict = json.loads(data)
     else:
@@ -57,7 +55,8 @@ def min_max_normalize(df: DataFrame, dtypes: dict) -> DataFrame:
     Args:
         df (DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
-    numeric_features = [col for col in df.columns if dtypes.get(col) == 'numerical']
+    numeric_features = [
+        col for col in df.columns if dtypes.get(col) == 'numerical']
     if numeric_features:
         scaled_data = MinMaxScaler().fit_transform(df[numeric_features].values)
         df[numeric_features] = scaled_data
@@ -70,9 +69,11 @@ def standard_normalize(df: DataFrame, dtypes: dict) -> DataFrame:
     Args:
         df (DataFrame): DataFrame to be normalized
         dtypes (dict): Map of column names to variable types"""
-    numeric_features = [col for col in df.columns if dtypes.get(col) == 'numerical']
+    numeric_features = [
+        col for col in df.columns if dtypes.get(col) == 'numerical']
     if numeric_features:
-        scaled_data = StandardScaler().fit_transform(df[numeric_features].values)
+        scaled_data = StandardScaler().fit_transform(
+            df[numeric_features].values)
         df[numeric_features] = scaled_data
     return df
 
@@ -83,18 +84,31 @@ def find_duplicate_columns(df: DataFrame, is_close=False) -> dict:
     Arguments:
         is_close(bool): Pass True to use numpy.isclose instead of pandas.equals."""
     dups = {}
-    for idx, col in enumerate(df.columns):  # Iterate through all the columns of dataframe
-        ref = df[col]                      # Take the column values as reference.
-        for tgt_col in df.columns[idx + 1:]:  # Iterate through all other columns
-            if isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):  # Take target values
+    # Iterate through all the columns of dataframe
+    for idx, col in enumerate(df.columns):
+        # Take the column values as reference.
+        ref = df[col]
+        # Iterate through all other columns
+        for tgt_col in df.columns[idx + 1:]:
+            # Take target values
+            if isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):
                 dups.setdefault(col, []).append(tgt_col)  # Store if they match
     return dups
 
 
-def infer_dtypes(df: Union[DataFrame, Series], skip: Union[list, set] = []):
+def drop_column_list(df: DataFrame, column_list: dict):
+    "Drops from a DataFrame a duplicates mapping of columns to duplicate lists. Works inplace."
+    for col, dup_list in column_list.items():
+        if col in df.columns:  # Ensures we will not drop both members of duplicate pairs
+            df.drop(columns=dup_list, index=dup_list, inplace=True)
+
+
+def infer_dtypes(df: Union[DataFrame, Series], skip: Optional[Union[list, set]] = None):
     """Simple inference method to return a dictionary with list of numeric_features and categorical_features
     Note: The objective is not to substitute the need for passed dtypes but rather to provide expedite inferal between
     numerical or categorical features"""
+    skip = [] if skip is None else skip
+    infer = pd.api.types.infer_dtype
     dtypes = {}
     as_categorical = ['string',
                       'bytes',
@@ -112,7 +126,8 @@ def infer_dtypes(df: Union[DataFrame, Series], skip: Union[list, set] = []):
             else:
                 dtypes[column] = 'numerical'
     elif isinstance(df, Series):
-        dtypes[df.name] = 'categorical' if infer_dtype(df) in as_categorical else 'numerical'
+        dtypes[df.name] = 'categorical' if infer_dtype(
+            df) in as_categorical else 'numerical'
     return dtypes
 
 

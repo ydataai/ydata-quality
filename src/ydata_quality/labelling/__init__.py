@@ -2,8 +2,8 @@
 Tools to guarantee data quality on label features.
 """
 
-from .engine import LabelInspector
+from .engine import label_inspector_dispatch
 
 __all__ = [
-    "LabelInspector"
+    "label_inspector_dispatch"
 ]

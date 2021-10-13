@@ -1,22 +1,18 @@
 """
 Implementation of LabelInspector engine class to run label quality analysis.
 """
-from typing import Union, Optional
+from typing import Optional, Union
 
 from pandas import DataFrame, Series
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import infer_dtypes
-from ..utils.modelling import (GMM_clustering,
-                               estimate_centroid,
-                               estimate_sd,
-                               normality_test,
-                               performance_one_vs_rest,
+from ..utils.modelling import (estimate_centroid, estimate_sd, gmm_clustering,
+                               normality_test, performance_one_vs_rest,
                                standard_transform)
 
 
-# pylint: disable=invalid-name
-def LabelInspector(df, label, random_state: Optional[int] = None, severity: Optional[str] = None):
+def label_inspector_dispatch(df, label, random_state: Optional[int] = None, severity: Optional[str] = None):
     """Runs a label type inference to instantiate the correct label inspector.
     Instantiate this label inspector method to create a Label Inspector.
 
@@ -125,7 +121,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
                     description=f"Found {len(few_labels)} labels with {count_th} or less records."
                 ))
         else:
-            self._logger.info(f"No labels with {count_th} or less records were found.",)
+            self._logger.info("No labels with %d or less records were found.", count_th)
             few_labels = None
         return few_labels
 
@@ -191,9 +187,8 @@ class CategoricalLabelInspector(SharedLabelInspector):
                 QualityWarning(
                     test='One vs Rest Performance', category='Labels', priority=2,
                     data=Series(poor_performers),
-                    description="Classes {} performed under the {:.1%} AUROC threshold. \
-The threshold was defined as an average of all classifiers with {:.0%} slack.".format(
-                        set(poor_performers.keys()), threshold, slack)
+                    description=f"Classes {set(poor_performers.keys())} performed under the {threshold:.1%} AUROC \
+threshold. The threshold was defined as an average of all classifiers with {slack:.0%} slack."
                 ))
         return Series(results)
 
@@ -202,10 +197,10 @@ The threshold was defined as an average of all classifiers with {:.0%} slack.".f
         Centroids are estimated using the normalized dataset."""
         label_counts = self._get_label_counts(dropna=True)
         centroids = DataFrame(self.tdf.iloc[:len(label_counts)],
-                                 columns=self.tdf.columns, index=label_counts.index)
-        for i, _class in enumerate(label_counts.index):
+                              columns=self.tdf.columns, index=label_counts.index)
+        for count, _class in enumerate(label_counts.index):
             records = self.tdf[self.tdf[self.label] == _class]
-            centroids.iloc[i] = estimate_centroid(records, self.dtypes)
+            centroids.iloc[count] = estimate_centroid(records, self.dtypes)
         return centroids
 
     def _get_class_sds(self):
@@ -255,16 +250,16 @@ class NumericalLabelInspector(SharedLabelInspector):
         super().__init__(df=df, label=label, random_state=random_state, severity=severity)
         self._tests = ["missing_labels", "test_normality", "outlier_detection"]
 
-    def _GMM_clusters(self, max_clusters):
+    def _gmm_clusters(self, max_clusters):
         """Separates the dataset into a Gaussian Mixture Model cluster optimized nbins.
         Clustering is done only with the label column values."""
         sorted_vals = self.tdf[self.label].sort_values().copy()
         search_space = range(1, max_clusters)
-        AICs = [None for k in search_space]
+        aic = [None for k in search_space]
         labels = {k: None for k in search_space}
-        for i, k in enumerate(search_space):
-            labels[k], AICs[i] = GMM_clustering(sorted_vals.values.reshape(-1, 1), k)
-        ideal_k = list(labels.keys())[AICs.index(min(AICs))]
+        for count, total_clusters in enumerate(search_space):
+            labels[total_clusters], aic[count] = gmm_clustering(sorted_vals.values.reshape(-1, 1), total_clusters)
+        ideal_k = list(labels.keys())[aic.index(min(aic))]
         return Series(labels[ideal_k], index=sorted_vals.index)
 
     def outlier_detection(self, th: float = 3., use_clusters=False, max_clusters: int = 5):
@@ -278,7 +273,7 @@ class NumericalLabelInspector(SharedLabelInspector):
             max_clusters: To take effect must be used with use_clusters passed as True.
                 Defines search space upper bound for number of clusters."""
         if use_clusters:
-            cluster_labels = self._GMM_clusters(max_clusters)
+            cluster_labels = self._gmm_clusters(max_clusters)
         else:
             cluster_labels = Series('full_dataset', index=self.tdf.index)
         clusters = cluster_labels.unique()
@@ -287,16 +282,16 @@ class NumericalLabelInspector(SharedLabelInspector):
             values = self.tdf[self.label][cluster_labels == cluster].copy()
             if len(values) == 1:  # Single element clusters are automatically flagged as potential outliers
                 potential_outliers[cluster] = self.df.loc[values.index]
-            else:  # Look for deviant elements inside clusters
-                median = values.median()
-                std = values.std()
-                abs_deviations = ((values - median) / std).abs()
-                cluster_outliers = self.df.loc[abs_deviations[abs_deviations > th].index]
-                if len(cluster_outliers) > 0:
-                    potential_outliers[cluster] = cluster_outliers
+                continue
+            median = values.median()
+            std = values.std()
+            abs_deviations = ((values - median) / std).abs()
+            cluster_outliers = self.df.loc[abs_deviations[abs_deviations > th].index]
+            if len(cluster_outliers) > 0:
+                potential_outliers[cluster] = cluster_outliers
         if len(potential_outliers) > 0:
             total_outliers = sum([cluster_outliers.shape[0] for cluster_outliers in potential_outliers.values()])
-            coverage_string = "{} clusters".format(len(clusters)) if use_clusters else "the full dataset"
+            coverage_string = f"{len(clusters)} clusters" if use_clusters else "the full dataset"
             self.store_warning(
                 QualityWarning(
                     test='Outlier Detection', category='Labels', priority=2, data=potential_outliers,
