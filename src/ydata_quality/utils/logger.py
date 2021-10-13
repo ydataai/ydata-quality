@@ -1,14 +1,16 @@
+"Data Quality logger functions"
 import logging
-from typing import TextIO
-import sys
 import os
+import sys
 from logging import _nameToLevel
+from typing import TextIO
 
 # Default vars for the logger
 NAME = os.getenv('DQ_LOGGER_NAME', 'DQ_Logger')
 
 
 def get_logger(name, stream: TextIO = sys.stdout, level: str = logging.INFO):
+    "Returns a logger instance. Will not create another if one with the same name already exists."
     acceptable_levels = [None] + list(_nameToLevel.keys())
     assert level in acceptable_levels, f"Valid levels for warning severity are {acceptable_levels}. \
       Defaults to info level."

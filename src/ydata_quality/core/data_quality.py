@@ -6,42 +6,42 @@ from typing import Callable, List, Optional, Union
 
 from pandas import DataFrame
 
-from .warnings import Priority, QualityWarning, WarningStyling
 from ..bias_fairness import BiasFairness
 from ..data_expectations import DataExpectationsReporter
 from ..data_relations import DataRelationsDetector
-from ..duplicates import DuplicateChecker
 from ..drift import DriftAnalyser
+from ..duplicates import DuplicateChecker
 from ..erroneous_data import ErroneousDataIdentifier
-from ..labelling import LabelInspector
+from ..labelling import label_inspector_dispatch
 from ..missings import MissingsProfiler
-from ..utils.logger import get_logger, NAME
+from ..utils.logger import NAME, get_logger
+from .warnings import Priority, QualityWarning, WarningStyling
 
 
-# pylint: disable=dangerous-default-value,too-many-locals
+# pylint: disable=too-many-locals
 class DataQuality:
     "DataQuality contains the multiple data quality engines."
-
+    # pylint: disable=too-many-arguments
     def __init__(self,
-                    df: DataFrame,
-                    label: str = None,
-                    random_state: Optional[int]  = None,
-                    entities: List[Union[str, List[str]]] = [],
-                    is_close: bool= False,
-                    ed_extensions: Optional[list]=[],
-                    sample: Optional[DataFrame] = None,
-                    model: Callable = None,
-                    results_json_path: str = None,
-                    error_tol: int = 0,
-                    rel_error_tol: Optional[float] = None,
-                    minimum_coverage: Optional[float] = 0.75,
-                    sensitive_features: List[str] = [],
-                    dtypes: Optional[dict] = {},
-                    corr_th: float = 0.8,
-                    vif_th: float = 5,
-                    p_th: float = 0.05,
-                    plot: bool = False,
-                    severity: str= 'ERROR'):
+                 df: DataFrame,
+                 label: str = None,
+                 random_state: Optional[int] = None,
+                 entities: Optional[List[Union[str, List[str]]]] = None,
+                 is_close: bool = False,
+                 ed_extensions: Optional[list] = None,
+                 sample: Optional[DataFrame] = None,
+                 model: Callable = None,
+                 results_json_path: str = None,
+                 error_tol: int = 0,
+                 rel_error_tol: Optional[float] = None,
+                 minimum_coverage: Optional[float] = 0.75,
+                 sensitive_features: Optional[List[str]] = None,
+                 dtypes: Optional[dict] = None,
+                 corr_th: float = 0.8,
+                 vif_th: float = 5,
+                 p_th: float = 0.05,
+                 plot: bool = False,
+                 severity: str = 'ERROR'):
         """
         Engines:
         - Duplicates
@@ -66,17 +66,27 @@ class DataQuality:
             model: [DRIFT ANALYSIS] model wrapped by ModelWrapper used to test concept drift.
             results_json (str): [EXPECTATIONS] A path to the json output from a Great Expectations validation run.
             error_tol (int): [EXPECTATIONS] Defines how many failed expectations are tolerated.
-            rel_error_tol (float): [EXPECTATIONS] Defines the maximum fraction of failed expectations, overrides error_tol.
-            minimum_coverage (float): [EXPECTATIONS] Minimum expected fraction of DataFrame columns covered by the expectation suite.
+            rel_error_tol (float): [EXPECTATIONS] Defines the maximum fraction of failed expectations, \
+                overrides error_tol.
+            minimum_coverage (float): [EXPECTATIONS] Minimum expected fraction of DataFrame columns covered by the \
+                expectation suite.
             sensitive_features (List[str]): [BIAS & FAIRNESS] features deemed as sensitive attributes
-            dtypes (Optional[dict]): Maps names of the columns of the dataframe to supported dtypes. Columns not specified are automatically inferred.
+            dtypes (Optional[dict]): Maps names of the columns of the dataframe to supported dtypes. Columns not \
+                specified are automatically inferred.
             corr_th (float): [DATA RELATIONS] Absolute threshold for high correlation detection. Defaults to 0.8.
-            vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, typically 5-10 is recommended. Defaults to 5.
-            p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for categorical independence test. Defaults to 0.05.
+            vif_th (float): [DATA RELATIONS] Variance Inflation Factor threshold for numerical independence test, \
+                typically 5-10 is recommended. Defaults to 5.
+            p_th (float): [DATA RELATIONS] Fraction of the right tail of the chi squared CDF defining threshold for \
+                categorical independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
-            severity (str): Sets the logger warning threshold to one of the valid levels [DEBUG, INFO, WARNING, ERROR, CRITICAL]
+            severity (str): Sets the logger warning threshold.
+                Valid levels are: [DEBUG, INFO, WARNING, ERROR, CRITICAL]
         """
-        # TODO: Refactor legacy engines (property based) and logic in this class to new base (lean objects)
+        entities = [] if entities is None else entities
+        ed_extensions = [] if ed_extensions is None else ed_extensions
+        sensitive_features = [] if sensitive_features is None else sensitive_features
+        dtypes = {} if dtypes is None else dtypes
+
         self.df = df
         self._warnings = []
         self._logger = get_logger(NAME, level=severity)
@@ -86,22 +96,26 @@ class DataQuality:
             'duplicates': DuplicateChecker(df=df, entities=entities, is_close=is_close, severity=severity),
             'missings': MissingsProfiler(df=df, label=label, random_state=self.random_state, severity=severity),
             'erroneous-data': ErroneousDataIdentifier(df=df, ed_extensions=ed_extensions, severity=severity),
-            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state, severity=severity)
+            'drift': DriftAnalyser(ref=df, sample=sample, label=label, model=model, random_state=self.random_state,
+                                   severity=severity)
         }
 
         self._engines_new = {'data-relations': DataRelationsDetector(severity=severity)}
         self._eval_args = {  # Argument lists for different engines
-            # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines, pass specific args in arg list (define here)
-            # In new standard all engines can be run at the evaluate method only, the evaluate run expression can then be:
-            # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args) for name, engine in self.engines.items()}
+            # TODO: centralize shared args in a dictionary to pass just like a regular kwargs to engines,
+            # pass specific args in arg list (define here). In new standard all engines can be run at the evaluate
+            # method only, the evaluate run expression can then be:
+            # results = {name: engine.evaluate(*self._eval_args.get(name,[]), **shared_args)
+            # for name, engine in self.engines.items()}
             'expectations': [results_json_path, df, error_tol, rel_error_tol, minimum_coverage],
             'data-relations': [df, dtypes, label, corr_th, vif_th, p_th, plot]
         }
 
         # Engines based on mandatory arguments
         if label is not None:
-            self._engines_legacy['labelling'] = LabelInspector(df=df, label=label,
-                                                               random_state=self.random_state, severity=severity)
+            self._engines_legacy['labelling'] = label_inspector_dispatch(df=df, label=label,
+                                                                         random_state=self.random_state,
+                                                                         severity=severity)
         else:
             self._logger.warning('Label is not defined. Skipping LABELLING engine.')
         if len(sensitive_features) > 0:
@@ -149,7 +163,8 @@ class DataQuality:
             self._random_state = new_state
         else:
             self._logger.warning(
-                'An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None (no reproducibility).')
+                'An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None \
+(no reproducibility).')
             self._random_state = None
 
     def _store_warnings(self):
@@ -161,12 +176,12 @@ class DataQuality:
         """Runs all the individual data quality checks and aggregates the results.
 
         Arguments:
-            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+            summary (bool): Print a report containing all the warnings detected during the data quality analysis.
         """
-        results = {
-            name: engine.evaluate(*self._eval_args.get(name,[]), summary=False) for name, engine in self.engines.items()
-        }
-        self._store_warnings() # fetch all warnings from the engines
+        results = {name: engine.evaluate(*self._eval_args.get(name, []), summary=False)
+                   for name, engine in self.engines.items()
+                   }
+        self._store_warnings()  # fetch all warnings from the engines
         self._clean_warnings()
         if summary:
             self._report()
@@ -182,12 +197,8 @@ class DataQuality:
             prio_counts = Counter([warn.priority.value for warn in self._warnings])
             print(f'{WarningStyling.BOLD}Warnings:{WarningStyling.ENDC}')
             print(f'\tTOTAL: {len(self._warnings)} warning(s)')
-            print(
-                *
-                (
-                    f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio,
-                    count in prio_counts.items()),
-                sep='\n')
+            print(*(f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: \
+{count} warning(s)" for prio, count in prio_counts.items()), sep='\n')
             warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
             for warn_list in warns:
                 if len(warn_list) > 0:

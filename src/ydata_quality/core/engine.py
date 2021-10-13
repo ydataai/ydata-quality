@@ -8,15 +8,15 @@ from typing import Optional
 from numpy import random
 from pandas import DataFrame
 
-from .warnings import Priority, QualityWarning, WarningStyling
 from ..utils.auxiliary import infer_df_type, infer_dtypes
-from ..utils.logger import get_logger, NAME
+from ..utils.logger import NAME, get_logger
+from .warnings import Priority, QualityWarning, WarningStyling
 
 
 # pylint: disable=too-many-instance-attributes
 class QualityEngine(ABC):
     "Main class for running and storing data quality analysis."
-
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  df: DataFrame,
                  random_state: Optional[int] = None,
@@ -45,7 +45,7 @@ class QualityEngine(ABC):
     @label.setter
     def label(self, label: str):
         assert isinstance(label, str), "Property 'label' should be a string."
-        assert label in self.df.columns, "Provided label %s does not exist as a DataFrame column." % label
+        assert label in self.df.columns, f"Provided label {label} does not exist as a DataFrame column."
         self._label = label
 
     @property
@@ -97,7 +97,7 @@ class QualityEngine(ABC):
         try:
             self._random_state = new_state
             random.seed(self.random_state)
-        except BaseException:
+        except TypeError:
             self._logger.warning(
                 'An invalid random state was passed. Acceptable values are integers >= 0 or None. Setting to None.')
             self._random_state = None
@@ -138,7 +138,8 @@ class QualityEngine(ABC):
             print(
                 *
                 (
-                    f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: {count} warning(s)" for prio,
+                    f"\t{WarningStyling.BOLD}{WarningStyling.PRIORITIES[prio]}Priority {prio}{WarningStyling.ENDC}: \
+{count} warning(s)" for prio,
                     count in prio_counts.items()),
                 sep='\n')
             warns = [[warn for warn in self._warnings if warn.priority.value == level] for level in range(4)]
@@ -151,18 +152,18 @@ class QualityEngine(ABC):
         """Runs all the individual tests available within the same suite. Returns a dict of (name: results).
 
         Arguments:
-            summary (bool): if True, prints a report containing all the warnings detected during the data quality analysis.
+            summary (bool): Print a report containing all the warnings detected during the data quality analysis.
         """
-        self._warnings = [] # reset the warnings
+        self._warnings = []  # reset the warnings
         results = {}
         for test in self.tests:
             try:  # if anything fails
                 results[test] = getattr(self, test)()
-            except Exception as exc: # print a Warning and log the message
-                self._logger.warning(
-                    'Skipping %s due to failure during computation. \
-                        See results folder of this test for further details.', test)
-                results[test] = "[ERROR] Test failed to compute. Original exception: "+f"{exc}"
+            # pylint: disable=broad-except
+            except Exception as exc:  # print a Warning and log the message
+                self._logger.warning('Skipping %s due to failure during computation. \
+See results folder of this test for further details.', test)
+                results[test] = "[ERROR] Test failed to compute. Original exception: " + f"{exc}"
 
         if summary:
             self._report()
