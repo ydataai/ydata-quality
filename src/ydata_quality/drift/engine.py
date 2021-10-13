@@ -223,7 +223,7 @@ with expected count below 5 (this sample is too small for chi-squared test)"
                 title='Reference sample covariate features no drift(%)',
                 xlabel='Percentage of remaining sample used',
                 ylabel='Percentage of no drift features',
-                ylim = (0, 104), style='.-')
+                ylim=(0, 104), style='.-')
             pltshow()
         return all_p_vals
 

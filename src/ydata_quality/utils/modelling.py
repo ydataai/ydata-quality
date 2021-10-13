@@ -266,14 +266,15 @@ def estimate_centroid(df: DataFrame, dtypes: dict = None):
     for col in centroid.index:
         centroid[col] = center_of_mass_statistic(df[col], dtypes[col])
     return centroid
-    
+
+
 def heom(x_df: DataFrame, y_df, dtypes):
     """Implements the Heterogeneous Euclidean-Overlap Metric between a sample x and a reference y.
     The data is assumed to already be preprocessed (normalized and imputed).
     [1]From 1997 Wilson, D. Randall; Martinez, Tony R. -
         Improved Heterogeneous Distance Functions https://arxiv.org/pdf/cs/9701101.pdf
     """
-    distances = DataFrame(empty(x.shape), index=x.index, columns=x.columns)
+    distances = DataFrame(empty(x_df.shape), index=x_df.index, columns=x_df.columns)
     distance_funcs = {'categorical': lambda x, y: 0 if x == y else 1,
                       'numerical': lambda x, y: abs(x - y)}  # Here we are assuming the data to be previously scaled
     for col_idx, column in enumerate(distances.columns):

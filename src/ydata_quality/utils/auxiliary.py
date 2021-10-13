@@ -84,14 +84,10 @@ def find_duplicate_columns(df: DataFrame, is_close=False) -> dict:
     Arguments:
         is_close(bool): Pass True to use numpy.isclose instead of pandas.equals."""
     dups = {}
-    # Iterate through all the columns of dataframe
-    for idx, col in enumerate(df.columns):
-        # Take the column values as reference.
-        ref = df[col]
-        # Iterate through all other columns
-        for tgt_col in df.columns[idx + 1:]:
-            # Take target values
-            if isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):
+    for idx, col in enumerate(df.columns):     # Iterate through all the columns of dataframe
+        ref = df[col]                          # Take the column values as reference.
+        for tgt_col in df.columns[idx + 1:]:   # Iterate through all other columns
+            if isclose(ref, df[tgt_col]).all() if is_close else ref.equals(df[tgt_col]):  # Take target values
                 dups.setdefault(col, []).append(tgt_col)  # Store if they match
     return dups
 
@@ -108,7 +104,6 @@ def infer_dtypes(df: Union[DataFrame, Series], skip: Optional[Union[list, set]] 
     Note: The objective is not to substitute the need for passed dtypes but rather to provide expedite inferal between
     numerical or categorical features"""
     skip = [] if skip is None else skip
-    infer = pd.api.types.infer_dtype
     dtypes = {}
     as_categorical = ['string',
                       'bytes',

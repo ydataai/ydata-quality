@@ -109,7 +109,8 @@ Skipping potential confounder and collider detection tests.')
 
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
-        Zero order coefficient above threshold and partial coefficient below threshold indicate existence of confounding effects."""
+        Correlation above threshold paired with partial correlation below threshold \
+        indicates existence of confounding effects."""
         mask = ones(corr_mat.shape, dtype='bool')
         mask[tril(mask)] = False  # Drop pairs below diagonal
         mask[corr_mat.abs() <= corr_th] = False  # Drop pairs with zero order correlation below threshold
@@ -129,7 +130,8 @@ Skipping potential confounder and collider detection tests.')
 
         Taking the zero order correlations (i.e. without controlling for the influence of any other feature), all
         candidate pairs are compared against the full order partial correlations.
-        Zero order coefficient below threshold and partial coefficient above threshold indicate existence of collider effects."""
+        Correlation below threshold paired with partial correlation above threshold \
+indicates existence of collider effects."""
         mask = ones(corr_mat.shape, dtype='bool')
         mask[tril(mask)] = False  # Drop pairs below diagonal
         mask[corr_mat.abs() > corr_th] = False  # Drop pairs with zero order correlation above threshold

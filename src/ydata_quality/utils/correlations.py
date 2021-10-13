@@ -83,14 +83,14 @@ def unbiased_cramers_v(col1: ndarray, col2: ndarray) -> float:
     Args:
         col1 (ndarray): A categorical column with no null values
         col2 (ndarray): A categorical column with no null values"""
-    n = col1.size
+    n_elements = col1.size
     contingency_table = crosstab(col1, col2)
     chi_sq = chi2_contingency(contingency_table)[0]
-    phi_sq = chi_sq / n
-    r, k = contingency_table.shape
-    phi_sq_hat = npmax([0, phi_sq - ((r - 1) * (k - 1)) / (n - 1)])
-    k_hat = k - square(k - 1) / (n - 1)
-    r_hat = r - square(r - 1) / (n - 1)
+    phi_sq = chi_sq / n_elements
+    r_vals, k_vals = contingency_table.shape
+    phi_sq_hat = npmax([0, phi_sq - ((r_vals - 1) * (k_vals - 1)) / (n_elements - 1)])
+    k_hat = k_vals - square(k_vals - 1) / (n_elements - 1)
+    r_hat = r_vals - square(r_vals - 1) / (n_elements - 1)
     return sqrt(phi_sq_hat / npmin([k_hat - 1, r_hat - 1]))  # Note: this is strictly positive
 
 
@@ -102,14 +102,16 @@ def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
         col1 (ndarray): A categorical column with no null values
         col2 (ndarray): A numerical column with no null values"""
     uniques = unique(col1)
-    yx_hat = zeros(len(uniques))
+    y_x_hat = zeros(len(uniques))
     counts = zeros(len(uniques))
-    for i, value in enumerate(uniques):
-        yx = col2[where(col1 == value)]
-        counts[i] = yx.size
-        yx_hat[i] = average(yx)
-    y_hat = average(yx_hat, weights=counts)
-    eta_2 = npsum(multiply(counts, square(subtract(yx_hat, y_hat)))) / npsum(square(subtract(col2, y_hat)))  # noqa
+    for count, value in enumerate(uniques):
+        y_x = col2[where(col1 == value)]
+        counts[count] = y_x.size
+        y_x_hat[count] = average(y_x)
+    y_hat = average(y_x_hat, weights=counts)
+    eta_2 = npsum(
+        multiply(counts,
+                 square(subtract(y_x_hat, y_hat)))) / npsum(square(subtract(col2, y_hat)))
     return sqrt(eta_2)  # Note: this is strictly positive
 
 
@@ -122,7 +124,6 @@ def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> 
         ('categorical', 'numerical'): correlation_ratio,
         ('numerical', 'numerical'): pearson_correlation,
     }
-    # TODO: p-values for every correlation function, to support Data Relations logic
     corr_mat = DataFrame(data=identity(n=len(df.columns)), index=df.columns, columns=df.columns)
     p_vals = DataFrame(data=ones(shape=corr_mat.shape), index=df.columns, columns=df.columns)
     has_values = df.notnull().values
@@ -177,15 +178,14 @@ def correlation_plotter(mat: DataFrame, title: str = '', symmetric: bool = True)
         mask = zeros_like(mat)
         mask[triu_indices_from(mask, 1)] = True
 
-    str_trunc = lambda x: x if len(x) <= 9 else x[:4] + '...' + x[-4:]
-    mat.rename(columns=str_trunc, inplace=True)
+    mat.rename(columns=lambda x: x if len(x) <= 9 else x[:4] + '...' + x[-4:], inplace=True)
     pltfigure(figsize=(14, 14))
-    ax = heatmap(
+    axe = heatmap(
         mat, cbar=True, vmin=-1, vmax=1, mask=mask if symmetric else None, annot=True, square=True,
         cmap=diverging_palette(220, 20, as_cmap=True), fmt=".0%")
     if title:
-        ax.set_title(title)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, size=8)
+        axe.set_title(title)
+    axe.set_xticklabels(axe.get_xticklabels(), rotation=45, size=8)
     pltshow()
 
 
@@ -218,7 +218,7 @@ def chi2_collinearity(data: DataFrame, dtypes: dict, p_th: float, label: str = N
     crit_chis = {}
     for comb in combs:
         cont = crosstab(data[comb[0]], data[comb[1]])
-        chi, p, dof, _ = chi2_contingency(cont)
+        chi, p_stat, dof, _ = chi2_contingency(cont)
         crit_chi = crit_chis.setdefault(dof, chi2.ppf(1 - p_th, dof))
         if chi > crit_chi:
             adj_chi = chi

@@ -4,7 +4,6 @@ Implementation of MissingProfiler engine to run missing value analysis.
 from typing import List, Optional, Union
 
 from pandas import DataFrame, Series
-from numpy import fill_diagonal
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations

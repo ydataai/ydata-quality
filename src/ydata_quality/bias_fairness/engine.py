@@ -21,7 +21,7 @@ class BiasFairness(QualityEngine):
         - Sensitive Predictability: trains a baseline model to predict sensitive attributes
         - Performance Discrimination: checks for performance disparities on sensitive attributes
     """
-
+    # pylint: disable=too-many-arguments
     def __init__(self, df: DataFrame, sensitive_features: List[str], label: Optional[str] = None,
                  random_state: Optional[int] = None, severity: Optional[str] = None):
         """
