@@ -46,9 +46,23 @@ class StringEnum(Enum):
     @classmethod
     def _missing_(cls, value):
         if isinstance(value, str):
-            up_value = value.upper()
+            upper_value = value.upper()
 
-            if up_value in cls.__members__:
-                return cls(up_value)
+            key = StringEnum._key_from_str_(upper_value)
+            if key is not None:
+                return key
 
-        raise ValueError("%r is not a valid %s" % (value, cls.__name__))
+            lower_value = value.lower()
+
+            key = StringEnum._key_from_str_(lower_value)
+            if key is not None:
+                return key
+
+        raise ValueError(f"{value} is not a valid {cls.__name__}")
+
+    @classmethod
+    def _key_from_str_(cls, value: str):
+        if value in cls.__members__:
+            return cls(value)
+
+        return None
