@@ -5,6 +5,8 @@ from typing import List, Optional, Union
 
 from pandas import DataFrame, Series
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations
 from ..utils.modelling import (baseline_performance, get_prediction_task,
@@ -62,7 +64,8 @@ class MissingsProfiler(QualityEngine):
         if len(high_ratios) > 0:
             self.store_warning(
                 QualityWarning(
-                    test='High Missings', category='Missings', priority=3, data=high_ratios,
+                    test=QualityWarning.Test.HIGH_MISSINGS, category=QualityWarning.Category.MISSINGS,
+                    priority=Priority.P3, data=high_ratios,
                     description=f"Found {len(high_ratios)} columns with more than {th*100:.1f}% of missing values."
                 )
             )
@@ -86,7 +89,8 @@ class MissingsProfiler(QualityEngine):
         if len(corrs) > 0:
             self.store_warning(
                 QualityWarning(
-                    test='High Missing Correlations', category='Missings', priority=3, data=corrs,
+                    test=QualityWarning.Test.HIGH_MISSING_CORRELATIONS, category=QualityWarning.Category.MISSINGS,
+                    priority=Priority.P3, data=corrs,
                     description=f"Found {len(corrs)} feature pairs with correlation "
                     f"of missing values higher than defined threshold ({th})."
                 )
@@ -150,7 +154,8 @@ class MissingsProfiler(QualityEngine):
         if len(high_perfs) > 0:
             self.store_warning(
                 QualityWarning(
-                    test='Missingness Prediction', category='Missings', priority=2, data=high_perfs,
+                    test=QualityWarning.Test.MISSINGNESS_PREDICTION, category=QualityWarning.Category.MISSINGS,
+                    priority=Priority.P2, data=high_perfs,
                     description=f'Found {len(high_perfs)} features with prediction performance \
                         of missingness above threshold ({th}).'
                 )

@@ -135,10 +135,14 @@ class DataQuality:
         self._warnings = sorted(list(set(self._warnings)))  # Sort unique warnings by priority
 
     def get_warnings(self,
-                     category: Optional[str] = None,
-                     test: Optional[str] = None,
+                     category: Optional[Union[QualityWarning.Category, str]] = None,
+                     test: Optional[Union[QualityWarning.Test, str]] = None,
                      priority: Optional[Priority] = None) -> List[QualityWarning]:
         "Retrieves warnings filtered by their properties."
+
+        category = QualityWarning.Category(category) if category is not None else None
+        test = QualityWarning.Test(test) if test is not None else None
+
         self._store_warnings()
         self._clean_warnings()
         filtered = [w for w in self._warnings if w.category == category] if category else self._warnings
