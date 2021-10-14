@@ -6,6 +6,8 @@ from typing import List, Optional, Union
 
 from pandas import DataFrame
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import find_duplicate_columns
 
@@ -70,7 +72,7 @@ DataFrame's columns."
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.EXACT_DUPLICATES, category=QualityWarning.Category.DUPLICATES,
-                    priority=2, data=dups,
+                    priority=Priority.P2, data=dups,
                     description=f"Found {len(dups)} instances with exact duplicate feature values."
                 ))
         else:
@@ -85,7 +87,7 @@ DataFrame's columns."
         if len(dups) > 0:                        # if we have any duplicates
             self.store_warning(
                 QualityWarning(
-                    test='Entity Duplicates', category='Duplicates', priority=2, data=dups,
+                    test='Entity Duplicates', category='Duplicates', priority=Priority.P2, data=dups,
                     description=f"Found {len(dups)} duplicates after grouping by entities."
                 ))
             if isinstance(entity, str):
@@ -126,7 +128,7 @@ DataFrame's columns."
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.DUPLICATE_COLUMNS, category=QualityWarning.Category.DUPLICATES,
-                    priority=1, data=dups,
+                    priority=Priority.P1, data=dups,
                     description=f"Found {cols_with_dups} columns with exactly the same feature values as other columns."
                 )
             )

@@ -5,6 +5,8 @@ from typing import Optional, Union
 
 from pandas import DataFrame, Series
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import infer_dtypes
 from ..utils.modelling import (estimate_centroid, estimate_sd, gmm_clustering,
@@ -68,7 +70,7 @@ class SharedLabelInspector(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.MISSING_LABELS, category=QualityWarning.Category.LABELS,
-                    priority=1, data=missing_labels,
+                    priority=Priority.P1, data=missing_labels,
                     description=f"Found {len(missing_labels)} instances with missing labels."
                 ))
         else:
@@ -119,7 +121,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.FEW_LABELS, category=QualityWarning.Category.LABELS,
-                    priority=2, data=few_labels,
+                    priority=Priority.P2, data=few_labels,
                     description=f"Found {len(few_labels)} labels with {count_th} or less records."
                 ))
         else:
@@ -153,7 +155,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.UNBALANCED_CLASSES, category=QualityWarning.Category.LABELS,
-                    priority=2, data=data,
+                    priority=Priority.P2, data=data,
                     description=f"""
                     Classes {set(data['Under-represented'].keys())} \
                         are under-represented each having less than {fair_share-adj_slack:.1%} of total instances. \
@@ -188,7 +190,7 @@ class CategoricalLabelInspector(SharedLabelInspector):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.ONE_REST_PERFORMANCE, category=QualityWarning.Category.LABELS,
-                    priority=2, data=Series(poor_performers),
+                    priority=Priority.P2, data=Series(poor_performers),
                     description=f"Classes {set(poor_performers.keys())} performed under the {threshold:.1%} AUROC \
 threshold. The threshold was defined as an average of all classifiers with {slack:.0%} slack."
                 ))
@@ -235,8 +237,8 @@ threshold. The threshold was defined as an average of all classifiers with {slac
         if potential_outliers > 0:
             self.store_warning(
                 QualityWarning(
-                    test=QualityWarning.Test.OUTLIER_DETECTION, category=QualityWarning.Category.LABELS, 
-                    priority=2, data=data,
+                    test=QualityWarning.Test.OUTLIER_DETECTION, category=QualityWarning.Category.LABELS,
+                    priority=Priority.P2, data=data,
                     description=f"""
                     Found {potential_outliers} potential outliers across {len(data.keys())} classes. \
                     A distance bigger than {th} standard deviations of intra-cluster distances \
@@ -298,7 +300,7 @@ class NumericalLabelInspector(SharedLabelInspector):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.OUTLIER_DETECTION, category=QualityWarning.Category.LABELS,
-                    priority=2, data=potential_outliers,
+                    priority=Priority.P2, data=potential_outliers,
                     description=f"""
                     Found {total_outliers} potential outliers across {coverage_string}. \
                     A distance bigger than {th} standard deviations of intra-cluster distances \
@@ -321,7 +323,7 @@ class NumericalLabelInspector(SharedLabelInspector):
                 self.store_warning(
                     QualityWarning(
                         test=QualityWarning.Test.TEST_NORMALITY, category=QualityWarning.Category.LABELS,
-                        priority=2, data=vals,
+                        priority=Priority.P2, data=vals,
                         description=f"The label distribution as-is failed a normality test. \
 Using the {transform} transform provided a positive normality test with a p-value statistic of {pstat:.2f}"
                     ))
@@ -333,7 +335,7 @@ Using the {transform} transform provided a positive normality test with a p-valu
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.TEST_NORMALITY, category=QualityWarning.Category.LABELS,
-                    priority=1, data=vals,
+                    priority=Priority.P1, data=vals,
                     description="""
                     The label distribution failed to pass a normality test as-is and following a battery of transforms.
 It is possible that the data originates from an exotic distribution, there is heavy outlier presence or it is \

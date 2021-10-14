@@ -6,6 +6,8 @@ from typing import Optional
 from pandas import DataFrame
 from numpy import argmin
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import test_load_json_path
 from ..utils.logger import NAME, get_logger
@@ -56,7 +58,7 @@ bound of the expected range."
         self.store_warning(
             QualityWarning(
                 test=QualityWarning.Test.EXPECTATION_ASSESSMENT_VALUE_BETWEEN,
-                category=QualityWarning.Category.DATA_EXPECTATIONS, priority=3,
+                category=QualityWarning.Category.DATA_EXPECTATIONS, priority=Priority.P3,
                 data=(range_deviations, bound_deviations),
                 description=f"Column {column_name} - The observed value is outside of the expected range."
                 + (range_deviation_string if range_deviations else "")
@@ -124,7 +126,7 @@ bound of the expected range."
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.COVERAGE_FRACTION,
-                    category=QualityWarning.Category.DATA_EXPECTATIONS, priority=2,
+                    category=QualityWarning.Category.DATA_EXPECTATIONS, priority=Priority.P2,
                     data={'Columns not covered': df_column_set.difference(column_coverage)},
                     description=f"The provided DataFrame has a total expectation coverage of {coverage_fraction:.0%} \
 of its columns, which is below the expected coverage of {minimum_coverage:.0%}."
@@ -150,7 +152,7 @@ of its columns, which is below the expected coverage of {minimum_coverage:.0%}."
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.OVERALL_ASSESSMENT,
-                    category=QualityWarning.Category.DATA_EXPECTATIONS, priority=2,
+                    category=QualityWarning.Category.DATA_EXPECTATIONS, priority=Priority.P2,
                     data={'Failed expectation indexes': failed_expectation_ids},
                     description=f"{len(failed_expectation_ids)} expectations have failed, which is more than the \
 implied absolute threshold of {int(error_tol)} failed expectations."

@@ -6,6 +6,8 @@ from typing import List, Optional, Tuple
 from pandas import DataFrame
 from numpy import ones, tril, argwhere
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import infer_dtypes, standard_normalize
 from ..utils.correlations import (chi2_collinearity, correlation_matrix,
@@ -120,7 +122,7 @@ Skipping potential confounder and collider detection tests.')
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.CONFOUNDED_CORRELATIONS, category=QualityWarning.Category.DATA_RELATIONS,
-                    priority=2, data=confounded_pairs,
+                    priority=Priority.P2, data=confounded_pairs,
                     description=f"""
                 Found {len(confounded_pairs)} independently correlated variable pairs that disappeared after controling\
                 for the remaining variables. This is an indicator of potential confounder effects in the dataset."""))
@@ -143,7 +145,7 @@ indicates existence of collider effects."""
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.COLLIDER_CORRELATIONS, category=QualityWarning.category.DATA_RELATIONS,
-                    priority=2, data=colliding_pairs,
+                    priority=Priority.P2, data=colliding_pairs,
                     description=f"Found {len(colliding_pairs)} independently uncorrelated variable pairs that showed \
 correlation after controling for the remaining variables. \
 This is an indicator of potential colliding bias with other covariates."))
@@ -199,7 +201,7 @@ You might want to try lowering corr_th."
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.HIGH_COLLINEARITY_NUMERICAL,
-                    category=QualityWarning.Category.DATA_RELATIONS, priority=2, data=inflated,
+                    category=QualityWarning.Category.DATA_RELATIONS, priority=Priority.P2, data=inflated,
                     description=f"""Found {len(inflated)} numerical variables with high Variance Inflation Factor \
 (VIF>{vif_th:.1f}). The variables listed in results are highly collinear with other variables in the dataset. \
 These will make model explainability harder and potentially give way to issues like overfitting.\
@@ -210,7 +212,7 @@ Depending on your end goal you might want to remove the highest VIF variables.""
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.HIGH_COLLINEARITY_CATEGORICAL,
-                    category=QualityWarning.Category.DATA_RELATIONS, priority=2, data=chi2_tests,
+                    category=QualityWarning.Category.DATA_RELATIONS, priority=Priority.P2, data=chi2_tests,
                     description=f"""Found {len(cat_coll_scores)} categorical variables with significant collinearity \
 (p-value < {p_th}). The variables listed in results are highly collinear with other variables \
 in the dataset and sorted descending according to propensity. These will make model explainability \

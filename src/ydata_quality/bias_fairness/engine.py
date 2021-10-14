@@ -7,6 +7,8 @@ from typing import List, Optional
 from pandas import DataFrame, Series
 from dython.nominal import compute_associations
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations
 from ..utils.modelling import (baseline_performance,
@@ -59,7 +61,7 @@ class BiasFairness(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.PROXY_IDENTIFICATION,
-                    category=QualityWarning.Category.BIAS_FAIRNESS, priority=2, data=corrs,
+                    category=QualityWarning.Category.BIAS_FAIRNESS, priority=Priority.P2, data=corrs,
                     description=f"Found {len(corrs)} feature pairs of correlation "
                     f"to sensitive attributes with values higher than defined threshold ({th})."
                 ))
@@ -83,7 +85,7 @@ class BiasFairness(QualityEngine):
                 QualityWarning(
                     test=QualityWarning.Test.SENSITIVE_ATTRIBUTE_PREDICTABILITY,
                     category=QualityWarning.Category.BIAS_FAIRNESS,
-                    priority=3, data=high_perfs,
+                    priority=Priority.P3, data=high_perfs,
                     description=f"Found {len(high_perfs)} sensitive attribute(s) with high predictability performance"
                     f" (greater than {th})."
                 )
@@ -128,7 +130,7 @@ percentage.
                 self.store_warning(
                     QualityWarning(
                         test=QualityWarning.Test.SENSITIVE_ATTRIBUTE_REPRESENTATIVITY,
-                        category=QualityWarning.Category.BIAS_FAIRNESS, priority=2, data=low_dist,
+                        category=QualityWarning.Category.BIAS_FAIRNESS, priority=Priority.P2, data=low_dist,
                         description=f"Found {len(low_dist)} values of '{cat}' \
 sensitive attribute with low representativity in the dataset (below {min_pct*100:.2f}%)."
                     )

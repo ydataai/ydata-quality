@@ -6,6 +6,8 @@ from typing import Optional
 
 from pandas import DataFrame
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.enum import DataFrameType
 
@@ -105,7 +107,7 @@ class ErroneousDataIdentifier(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.FLATLINES, category=QualityWarning.Category.ERRONEOUS_DATA,
-                    priority=2, data=flatlines,
+                    priority=Priority.P2, data=flatlines,
                     description=f"Found {total_flatlines} flatline events \
 with a minimun length of {th:.0f} among the columns {set(flatlines.keys())}."))
             return flatlines
@@ -151,7 +153,7 @@ with a minimun length of {th:.0f} among the columns {set(flatlines.keys())}."))
         self.store_warning(
             QualityWarning(
                 test=QualityWarning.Test.PREDEFINED_ERRONEOUS_DATA, category=QualityWarning.Category.ERRONEOUS_DATA,
-                priority=2, data=eds,
+                priority=Priority.P2, data=eds,
                 description=f"Found {total_eds} ED values in the dataset."
             ))
         return eds

@@ -5,6 +5,8 @@ from typing import List, Optional, Union
 
 from pandas import DataFrame, Series
 
+from src.ydata_quality.core.warnings import Priority
+
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations
 from ..utils.modelling import (baseline_performance, get_prediction_task,
@@ -63,7 +65,7 @@ class MissingsProfiler(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.HIGH_MISSINGS, category=QualityWarning.Category.MISSINGS,
-                    priority=3, data=high_ratios,
+                    priority=Priority.P3, data=high_ratios,
                     description=f"Found {len(high_ratios)} columns with more than {th*100:.1f}% of missing values."
                 )
             )
@@ -88,7 +90,7 @@ class MissingsProfiler(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.HIGH_MISSING_CORRELATIONS, category=QualityWarning.Category.MISSINGS,
-                    priority=3, data=corrs,
+                    priority=Priority.P3, data=corrs,
                     description=f"Found {len(corrs)} feature pairs with correlation "
                     f"of missing values higher than defined threshold ({th})."
                 )
@@ -153,7 +155,7 @@ class MissingsProfiler(QualityEngine):
             self.store_warning(
                 QualityWarning(
                     test=QualityWarning.Test.MISSINGNESS_PREDICTION, category=QualityWarning.Category.MISSINGS,
-                    priority=2, data=high_perfs,
+                    priority=Priority.P2, data=high_perfs,
                     description=f'Found {len(high_perfs)} features with prediction performance \
                         of missingness above threshold ({th}).'
                 )
