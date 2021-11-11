@@ -195,6 +195,7 @@ def vif_collinearity(data: DataFrame, dtypes: dict, label: str = None) -> Series
     if label and label in data.columns:
         data = data.drop(columns=label)
     num_columns = [col for col in data.columns if dtypes[col] == 'numerical']
+    data = data.dropna(subset=num_columns)
     warnings.filterwarnings("ignore", category=RuntimeWarning)
     vifs = [vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))]
     warnings.resetwarnings()
