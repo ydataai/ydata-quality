@@ -80,13 +80,13 @@ class DataRelationsDetector(QualityEngine):
             summary (bool): Print a report containing all the warnings detected during the data quality analysis.
         """
         results = {}
-        nan_or_const = df.nunique()<2  # Constant columns or all nan columns
+        nan_or_const = df.nunique() < 2  # Constant columns or all nan columns
         label = None if label in nan_or_const else label
-        self._logger.warning(f'The columns {list(nan_or_const.index[nan_or_const])} are constant or all NaNs and \
-were dropped from this evaluation.')
-        df = df.drop(columns = nan_or_const.index[nan_or_const])  # Constant columns or all nan columns are dropped
+        self._logger.warning('The columns %s are constant or all NaNs and \
+were dropped from this evaluation.', list(nan_or_const.index[nan_or_const]))
+        df = df.drop(columns=nan_or_const.index[nan_or_const])  # Constant columns or all nan columns are dropped
         if df.shape[1] < 2:
-            self._logger.warning(f'There are fewer than 2 columns on the dataset where correlations can be computed. \
+            self._logger.warning('There are fewer than 2 columns on the dataset where correlations can be computed. \
 Skipping the DataRelations engine execution.')
             return results
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
@@ -107,8 +107,8 @@ Skipped potential confounder and collider detection tests.')
         if label:
             try:
                 results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
-            except AssertionError as e:
-                self._logger.warning(str(e))
+            except AssertionError as exception:
+                self._logger.warning(str(exception))
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
         self._clean_warnings()
         if summary:

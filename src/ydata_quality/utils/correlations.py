@@ -201,7 +201,10 @@ def vif_collinearity(data: DataFrame, dtypes: dict, label: str = None) -> Series
     num_columns = [col for col in data.columns if dtypes[col] == 'numerical']
     data = data.dropna(subset=num_columns)
     warnings.filterwarnings("ignore", category=RuntimeWarning)
-    vifs = {} if data.empty else {num_columns[i]: vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))}
+    if data.empty:
+        vifs = {}
+    else:
+        vifs = {num_columns[i]: vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))}
     warnings.resetwarnings()
     return Series(data=vifs, dtype=float).sort_values(ascending=False)
 
