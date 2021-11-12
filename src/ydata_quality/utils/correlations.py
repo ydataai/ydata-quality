@@ -6,8 +6,7 @@ import warnings
 from itertools import combinations
 from typing import List, Optional
 
-from pandas import DataFrame, Series, crosstab
-from numpy.linalg import pinv
+from matplotlib.pyplot import figure as pltfigure, show as pltshow
 from numpy import (
     nan,
     fill_diagonal,
@@ -30,11 +29,13 @@ from numpy import (
     isnan,
     triu_indices_from,
 )
-from scipy.stats import pearsonr, chi2_contingency
+from numpy.linalg import pinv
+from pandas import DataFrame, Series, crosstab
+from scipy.stats import chi2_contingency, pearsonr
 from scipy.stats.distributions import chi2
-from statsmodels.stats.outliers_influence import variance_inflation_factor as vif
-from seaborn import heatmap, diverging_palette
-from matplotlib.pyplot import show as pltshow, figure as pltfigure
+from seaborn import diverging_palette, heatmap
+from statsmodels.stats.outliers_influence import \
+    variance_inflation_factor as vif
 
 from .auxiliary import drop_column_list, find_duplicate_columns
 
@@ -91,7 +92,8 @@ def unbiased_cramers_v(col1: ndarray, col2: ndarray) -> float:
     phi_sq_hat = npmax([0, phi_sq - ((r_vals - 1) * (k_vals - 1)) / (n_elements - 1)])
     k_hat = k_vals - square(k_vals - 1) / (n_elements - 1)
     r_hat = r_vals - square(r_vals - 1) / (n_elements - 1)
-    return sqrt(phi_sq_hat / npmin([k_hat - 1, r_hat - 1]))  # Note: this is strictly positive
+    den = npmin([k_hat - 1, r_hat - 1])
+    return sqrt(phi_sq_hat / den) if den != 0 else nan  # Note: this is strictly positive
 
 
 def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
@@ -102,6 +104,8 @@ def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
         col1 (ndarray): A categorical column with no null values
         col2 (ndarray): A numerical column with no null values"""
     uniques = unique(col1)
+    if len(uniques) < 2:
+        return nan
     y_x_hat = zeros(len(uniques))
     counts = zeros(len(uniques))
     for count, value in enumerate(uniques):
@@ -116,7 +120,7 @@ def correlation_ratio(col1: ndarray, col2: ndarray) -> float:
 
 
 # pylint: disable=too-many-locals
-def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> DataFrame:
+def correlation_matrix(df: DataFrame, dtypes: dict, label: str, drop_dups: bool = False) -> DataFrame:
     """Returns the correlation matrix.
     The methods used for computing correlations are mapped according to the column dtypes of each pair."""
     corr_funcs = {  # Map supported correlation functions
@@ -146,8 +150,8 @@ def correlation_matrix(df: DataFrame, dtypes: dict, drop_dups: bool = False) -> 
     if drop_dups:
         # Find duplicate row lists in absolute correlation matrix
         dup_pairs = find_duplicate_columns(corr_mat.abs(), True)
-        drop_column_list(corr_mat, dup_pairs)
-        drop_column_list(p_vals, dup_pairs)
+        drop_column_list(corr_mat, dup_pairs, label)
+        drop_column_list(p_vals, dup_pairs, label)
     return corr_mat, p_vals
 
 
@@ -197,9 +201,9 @@ def vif_collinearity(data: DataFrame, dtypes: dict, label: str = None) -> Series
     num_columns = [col for col in data.columns if dtypes[col] == 'numerical']
     data = data.dropna(subset=num_columns)
     warnings.filterwarnings("ignore", category=RuntimeWarning)
-    vifs = [vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))]
+    vifs = {} if data.empty else {num_columns[i]: vif(data[num_columns].values, i) for i in range(len(data[num_columns].columns))}
     warnings.resetwarnings()
-    return Series(data=vifs, index=num_columns).sort_values(ascending=False)
+    return Series(data=vifs, dtype=float).sort_values(ascending=False)
 
 
 # pylint: disable=too-many-locals

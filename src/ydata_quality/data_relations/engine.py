@@ -3,9 +3,8 @@ Implementation of DataRelationsDetector engine to run data relations analysis.
 """
 from typing import List, Optional, Tuple
 
+from numpy import argwhere, ones, tril
 from pandas import DataFrame
-from numpy import ones, tril, argwhere
-
 from src.ydata_quality.core.warnings import Priority
 
 from ..core import QualityEngine, QualityWarning
@@ -40,7 +39,7 @@ class DataRelationsDetector(QualityEngine):
     def dtypes(self, df_dtypes: Tuple[DataFrame, dict]):
         df, dtypes = df_dtypes
         if not isinstance(dtypes, dict):
-            self._logger.warning("Property 'dtypes' should be a dictionary. Defaulting to all column dtypes inference.")
+            self._logger.debug("Property 'dtypes' should be a dictionary. Defaulting to all column dtypes inference.")
             dtypes = {}
         cols_not_in_df = [col for col in dtypes if col not in df.columns]
         if len(cols_not_in_df) > 0:
@@ -49,7 +48,7 @@ class DataRelationsDetector(QualityEngine):
         wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
         if len(wrong_dtypes) > 0:
             self._logger.warning(
-                "Columns %s of dtypes where not defined with a supported dtype and will be inferred.", wrong_dtypes)
+                f"Columns {wrong_dtypes} of dtypes where not defined with a supported dtype and will be inferred.")
         dtypes = {key: val for key, val in dtypes.items() if key not in cols_not_in_df + wrong_dtypes}
         df_col_set = set(df.columns)
         dtypes_col_set = set(dtypes.keys())
@@ -64,7 +63,7 @@ class DataRelationsDetector(QualityEngine):
     def evaluate(self, df: DataFrame, dtypes: Optional[dict] = None, label: str = None, corr_th: float = 0.8,
                  vif_th: float = 5, p_th: float = 0.05, plot: bool = True, summary: bool = True) -> dict:
         """Runs tests to the validation run results and reports based on found errors.
-        We perform standard normalization of numerical features in order to unbias VIF and partial correlation methods.
+        Standard normalization of numerical features is performed as a preprocessing operation.
         This bias correction produces results equivalent to adding a constant feature to the dataset.
 
         Args:
@@ -74,17 +73,25 @@ class DataRelationsDetector(QualityEngine):
             label (Optional[str]): A string identifying the label feature column
             corr_th (float): Absolute threshold for high correlation detection. Defaults to 0.8.
             vif_th (float): Variance Inflation Factor threshold for numerical independence test.
-                Typically 5-10 is recommended. Defaults to 5.
-            p_th (float): Fraction of the right tail of the chi squared CDF.
-                Defines threshold for categorical independence test. Defaults to 0.05.
+                Typically a minimum of 5-10 is recommended. Defaults to 5.
+            p_th (float): Fraction of the right tail of the chi squared CDF defining threshold for categorical
+                 independence test. Defaults to 0.05.
             plot (bool): Pass True to produce all available graphical outputs, False to suppress all graphical output.
             summary (bool): Print a report containing all the warnings detected during the data quality analysis.
         """
-        assert label in df.columns or not label, "The provided label name does not exist as a column in the dataset"
+        results = {}
+        nan_or_const = df.nunique()<2  # Constant columns or all nan columns
+        label = None if label in nan_or_const else label
+        self._logger.warning(f'The columns {list(nan_or_const.index[nan_or_const])} are constant or all NaNs and \
+were dropped from this evaluation.')
+        df = df.drop(columns = nan_or_const.index[nan_or_const])  # Constant columns or all nan columns are dropped
+        if df.shape[1] < 2:
+            self._logger.warning(f'There are fewer than 2 columns on the dataset where correlations can be computed. \
+Skipping the DataRelations engine execution.')
+            return results
         self.dtypes = (df, dtypes)  # Consider refactoring QualityEngine dtypes (df as argument of setter)
         df = standard_normalize(df, self.dtypes)
-        results = {}
-        corr_mat, _ = correlation_matrix(df, self.dtypes, True)
+        corr_mat, _ = correlation_matrix(df, self.dtypes, label, True)
         p_corr_mat = partial_correlation_matrix(corr_mat)
         results['Correlations'] = {'Correlation matrix': corr_mat, 'Partial correlation matrix': p_corr_mat}
         if plot:
@@ -96,9 +103,12 @@ class DataRelationsDetector(QualityEngine):
             results['Colliders'] = self._collider_detection(corr_mat, p_corr_mat, corr_th)
         else:
             self._logger.warning('The partial correlation matrix is not computable for this dataset. \
-Skipping potential confounder and collider detection tests.')
+Skipped potential confounder and collider detection tests.')
         if label:
-            results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
+            try:
+                results['Feature Importance'] = self._feature_importance(corr_mat, p_corr_mat, label, corr_th)
+            except AssertionError as e:
+                self._logger.warning(str(e))
         results['High Collinearity'] = self._high_collinearity_detection(df, self.dtypes, label, vif_th, p_th=p_th)
         self._clean_warnings()
         if summary:
@@ -123,9 +133,9 @@ Skipping potential confounder and collider detection tests.')
                 QualityWarning(
                     test=QualityWarning.Test.CONFOUNDED_CORRELATIONS, category=QualityWarning.Category.DATA_RELATIONS,
                     priority=Priority.P2, data=confounded_pairs,
-                    description=f"""
-                Found {len(confounded_pairs)} independently correlated variable pairs that disappeared after controling\
-                for the remaining variables. This is an indicator of potential confounder effects in the dataset."""))
+                    description=f"""Found {len(confounded_pairs)} independently correlated variable pairs that \
+disappeared after controling for the remaining variables. This is an indicator of potential confounder effects \
+in the dataset."""))
         return confounded_pairs
 
     def _collider_detection(self, corr_mat: DataFrame, par_corr_mat: DataFrame,
@@ -147,8 +157,8 @@ indicates existence of collider effects."""
                     test=QualityWarning.Test.COLLIDER_CORRELATIONS, category=QualityWarning.category.DATA_RELATIONS,
                     priority=Priority.P2, data=colliding_pairs,
                     description=f"Found {len(colliding_pairs)} independently uncorrelated variable pairs that showed \
-correlation after controling for the remaining variables. \
-This is an indicator of potential colliding bias with other covariates."))
+correlation after controling for the remaining variables. This is an indicator of potential colliding bias with other \
+covariates."))
         return colliding_pairs
 
     @staticmethod
@@ -159,7 +169,8 @@ This is an indicator of potential colliding bias with other covariates."))
 
         This method returns a summary of all detected important features.
         The summary contains zero, full order partial correlation and a note regarding potential confounding."""
-        assert label in corr_mat.columns, f"The provided label {label} does not exist as a column in the DataFrame."
+        assert label in corr_mat.columns, f"The correlations of the label '{label}', required for the feature \
+importance test, were not computed (this column has less than the minimum of 2 unique values needed)."
         label_corrs = corr_mat.loc[label].drop(label)
         mask = ones(label_corrs.shape, dtype='bool')
         mask[label_corrs.abs() <= corr_th] = False  # Drop pairs with zero order correlation below threshold
@@ -204,7 +215,7 @@ You might want to try lowering corr_th."
                     category=QualityWarning.Category.DATA_RELATIONS, priority=Priority.P2, data=inflated,
                     description=f"""Found {len(inflated)} numerical variables with high Variance Inflation Factor \
 (VIF>{vif_th:.1f}). The variables listed in results are highly collinear with other variables in the dataset. \
-These will make model explainability harder and potentially give way to issues like overfitting.\
+These will make model explainability harder and potentially give way to issues like overfitting. \
 Depending on your end goal you might want to remove the highest VIF variables."""))
         if len(cat_coll_scores) > 0:
             # TODO: Merge warning messages (make one warning for the whole test,
