@@ -48,7 +48,7 @@ class DataRelationsDetector(QualityEngine):
         wrong_dtypes = [col for col, dtype in dtypes.items() if dtype not in supported_dtypes]
         if len(wrong_dtypes) > 0:
             self._logger.warning(
-                f"Columns {wrong_dtypes} of dtypes where not defined with a supported dtype and will be inferred.")
+                "Columns %s have no valid dtypes. Supported dtypes will be inferred.", wrong_dtypes)
         dtypes = {key: val for key, val in dtypes.items() if key not in cols_not_in_df + wrong_dtypes}
         df_col_set = set(df.columns)
         dtypes_col_set = set(dtypes.keys())
