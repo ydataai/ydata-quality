@@ -7,31 +7,28 @@ from nbconvert.preprocessors import ExecutePreprocessor
 from ydata_quality.data_relations.engine import DataRelationsDetector
 
 
-# pylint: disable=redefined-outer-name
-
-
-@fixture
-def data_relations():
+@fixture(name='data_relations')
+def fixture_data_relations():
     return DataRelationsDetector()
 
 
-@fixture
-def example_dataset_transformed():
+@fixture(name='example_dataset_transformed')
+def fixture_example_dataset_transformed():
     dataset_path = 'datasets/transformed/census_10k.csv'
     return read_csv(dataset_path)
 
 
 # pylint: disable=unspecified-encoding
-@fixture
-def ipynb_tutorial():
+@fixture(name='ipynb_tutorial')
+def fixture_ipynb_tutorial():
     path = "tutorials/data_relations.ipynb"
     with open(path) as file:
         ntb = nbformat.read(file, as_version=4)
     return ntb
 
 
-@fixture
-def dr_results_no_pcorr(data_relations, example_dataset_transformed):
+@fixture(name='dr_results_no_pcorr')
+def fixture_dr_results_no_pcorr(data_relations, example_dataset_transformed):
     results = data_relations.evaluate(df=example_dataset_transformed,
                                       dtypes=None,
                                       label='income',
@@ -39,8 +36,8 @@ def dr_results_no_pcorr(data_relations, example_dataset_transformed):
     return data_relations, results
 
 
-@fixture
-def dr_results_pc_corr(data_relations, example_dataset_transformed):
+@fixture(name='dr_results_pc_corr')
+def fixture_dr_results_pc_corr(data_relations, example_dataset_transformed):
     df = example_dataset_transformed.drop(columns=['education-num'])
     results = data_relations.evaluate(df=df,
                                       dtypes=None,
