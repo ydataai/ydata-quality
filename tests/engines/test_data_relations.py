@@ -18,11 +18,10 @@ def fixture_example_dataset_transformed():
     return read_csv(dataset_path)
 
 
-# pylint: disable=unspecified-encoding
 @fixture(name='ipynb_tutorial')
 def fixture_ipynb_tutorial():
     path = "tutorials/data_relations.ipynb"
-    with open(path) as file:
+    with open(path, encoding='utf8', errors='strict') as file:
         ntb = nbformat.read(file, as_version=4)
     return ntb
 
