@@ -92,9 +92,10 @@ def find_duplicate_columns(df: DataFrame, is_close=False) -> dict:
     return dups
 
 
-def drop_column_list(df: DataFrame, column_list: dict):
+def drop_column_list(df: DataFrame, column_list: dict, label: str = None):
     "Drops from a DataFrame a duplicates mapping of columns to duplicate lists. Works inplace."
     for col, dup_list in column_list.items():
+        dup_list = [col for col in dup_list if col != label]
         if col in df.columns:  # Ensures we will not drop both members of duplicate pairs
             df.drop(columns=dup_list, index=dup_list, inplace=True)
 
