@@ -85,7 +85,7 @@ You can also join the discussions on the #data-quality channel on our [Slack](ht
 For support in using this library, please join the #help Slack channel. The Slack community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Slack community!](http://slack.ydata.ai/)
 
 ## License
-[GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
+[MIT License](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
 
 ## About
 
