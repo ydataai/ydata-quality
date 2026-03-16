@@ -85,7 +85,7 @@ You can also join the discussions on our [Discord Community](https://discord.com
 For support in using this library, please join our Discord server. The Discord community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Discord community!](https://discord.com/invite/mw7xjJ7b7s)
 
 ## License
-[GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
+[MIT License](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
 
 ## About
 
