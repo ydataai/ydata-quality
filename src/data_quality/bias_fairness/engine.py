@@ -7,7 +7,7 @@ from typing import List, Optional
 from pandas import DataFrame, Series
 from dython.nominal import compute_associations
 
-from src.ydata_quality.core.warnings import Priority
+from src.data_quality.core.warnings import Priority
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.correlations import filter_associations

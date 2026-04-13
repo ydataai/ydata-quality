@@ -7,7 +7,7 @@ requirements = (here / "requirements.txt").read_text(encoding="utf8")
 long_description = (here / 'README.md').read_text(encoding='utf-8')
 version = (here / 'VERSION').read_text().rstrip("\n")
 
-setup(name='ydata-quality',
+setup(name='fg-data-quality',
       version=version,
       description='YData open-source tools for Data Quality.',
       long_description=long_description,
@@ -34,8 +34,8 @@ setup(name='ydata-quality',
         'Topic :: Software Development :: Libraries :: Python Modules'
       ],
       keywords='data science ydata',
-      url='https://github.com/ydataai/ydata-quality',
-      license="https://github.com/ydataai/ydata-quality/blob/master/LICENSE",
+      url='https://github.com/Data-Centric-AI-Community/fg-data-quality',
+      license="https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/LICENSE",
       python_requires=">=3.7, <3.9",
       packages=find_namespace_packages('src'),
       package_dir={'':'src'},

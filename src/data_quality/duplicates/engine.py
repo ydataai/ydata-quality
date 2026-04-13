@@ -6,7 +6,7 @@ from typing import List, Optional, Union
 
 from pandas import DataFrame
 
-from src.ydata_quality.core.warnings import Priority
+from src.data_quality.core.warnings import Priority
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import find_duplicate_columns

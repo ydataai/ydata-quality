@@ -44,15 +44,15 @@ test: ### Runs all the project tests
 	$(PYTHON) -m pytest tests/
 
 package: clean ### Runs the project setup
-	echo __version__ = \"$(version)\" > src/ydata_quality/__version__.py
+	echo __version__ = \"$(version)\" > src/data_quality/__version__.py
 	echo "$(version)" > VERSION
 	$(PYTHON) setup.py sdist bdist_wheel
 
 install: ### Installs required dependencies
-	$(PIP) install dist/ydata-quality-$(version).tar.gz
+	$(PIP) install dist/data-quality-$(version).tar.gz
 
 link-local: ### Installs the lib in dev mode
-	echo __version__ = \"$(version)\" > src/ydata_quality/__version__.py
+	echo __version__ = \"$(version)\" > src/data_quality/__version__.py
 	$(PIP) install -e .
 
 upload:

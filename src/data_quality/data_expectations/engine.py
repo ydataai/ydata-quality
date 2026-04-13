@@ -6,7 +6,7 @@ from typing import Optional
 from pandas import DataFrame
 from numpy import argmin
 
-from src.ydata_quality.core.warnings import Priority
+from src.data_quality.core.warnings import Priority
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import test_load_json_path

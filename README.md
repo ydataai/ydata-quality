@@ -1,33 +1,30 @@
-> **`ydata-quality` is now `data-quality`.** This package has been renamed to `data-quality`. Please follow the [Migration Guide](#migration-guide) as soon as possible — the old package will no longer receive updates or bug fixes.
-
-
-[![](https://api.codacy.com/project/badge/Grade/f1662116e982402c956d2720fbd24507)](https://app.codacy.com/gh/ydataai/ydata-quality)
-![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
-![](https://img.shields.io/pypi/status/ydata-quality)
-[![](https://pepy.tech/badge/ydata-quality)](https://pypi.org/project/ydata-quality/)
+[![](https://api.codacy.com/project/badge/Grade/f1662116e982402c956d2720fbd24507)](https://app.codacy.com/gh/Data-Centric-AI-Community/fg-data-quality)
+![](https://img.shields.io/github/workflow/status/Data-Centric-AI-Community/fg-data-quality/release)
+![](https://img.shields.io/pypi/status/fg-data-quality)
+[![](https://pepy.tech/badge/fg-data-quality)](https://pypi.org/project/fg-data-quality/)
 ![](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue)
-[![](https://img.shields.io/pypi/v/ydata-quality)](https://pypi.org/project/ydata-quality/)
-![](https://img.shields.io/github/license/ydataai/ydata-quality)
+[![](https://img.shields.io/pypi/v/fg-data-quality)](https://pypi.org/project/fg-data-quality/)
+![](https://img.shields.io/github/license/Data-Centric-AI-Community/fg-data-quality)
 
-# YData Quality
+# Data Quality
 
-ydata_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
+data_quality is an open-source python library for assessing Data Quality throughout the multiple stages of a data pipeline development. 
 
-A holistic view of the data can only be captured through a look at data from multiple dimensions and `ydata_quality` evaluates it in a modular way wrapped into a single Data Quality engine. This repository contains the core python source scripts and walkthrough tutorials.
+A holistic view of the data can only be captured through a look at data from multiple dimensions and `data_quality` evaluates it in a modular way wrapped into a single Data Quality engine. This repository contains the core python source scripts and walkthrough tutorials.
 
 ## Quickstart
 
-The source code is currently hosted on GitHub at: https://github.com/ydataai/ydata-quality
+The source code is currently hosted on GitHub at: https://github.com/Data-Centric-AI-Community/fg-data-quality
 
-Binary installers for the latest released version are available at the [Python Package Index (PyPI).](https://pypi.org/project/ydata-quality/)
+Binary installers for the latest released version are available at the [Python Package Index (PyPI).](https://pypi.org/project/fg-data-quality/)
 ```
-pip install ydata-quality
+pip install fg-data-quality
 ```
 
 ### Comprehensive quality check in few lines of code
 
 ```python
-from ydata_quality import DataQuality
+from data_quality import DataQuality
 import pandas as pd
 
 #Load in the data
@@ -72,7 +69,7 @@ pip uninstall ydata-quality
 ### 2. Install the new package
  
 ```bash
-pip install data-quality
+pip install fg-data-quality
 ```
  
 ### 3. Update your imports
@@ -97,19 +94,19 @@ grep -r "ydata_quality" . --include="*.py"
 
 ## Examples
 
-Here you can find walkthrough tutorials and examples to familiarize with different modules of `ydata_quality`
+Here you can find walkthrough tutorials and examples to familiarize with different modules of `data_quality`
 
-- [Start Here for Quick and Overall Walkthrough](https://github.com/ydataai/ydata-quality/blob/master/tutorials/main.ipynb)
+- [Start Here for Quick and Overall Walkthrough](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/main.ipynb)
 
 To dive into any focussed module, and to understand how they work, here are tutorial notebooks:
-1. [Bias and Fairness](https://github.com/ydataai/ydata-quality/blob/master/tutorials/bias_fairness.ipynb)
-2.  [Data Expectations](https://github.com/ydataai/ydata-quality/blob/master/tutorials/data_expectations.ipynb)
-3.  [Data Relations](https://github.com/ydataai/ydata-quality/blob/master/tutorials/data_relations.ipynb)
-4.  [Drift Analysis](https://github.com/ydataai/ydata-quality/blob/master/tutorials/drift.ipynb)
-5.  [Duplicates](https://github.com/ydataai/ydata-quality/blob/master/tutorials/duplicates.ipynb)
-6.  Labelling: [Categoricals](https://github.com/ydataai/ydata-quality/blob/master/tutorials/labelling_categorical.ipynb) and [Numericals](https://github.com/ydataai/ydata-quality/blob/master/tutorials/labelling_numerical.ipynb)
-7.  [Missings](https://github.com/ydataai/ydata-quality/blob/master/tutorials/missings.ipynb)
-8.  [Erroneous Data](https://github.com/ydataai/ydata-quality/blob/master/tutorials/erroneous_data.ipynb)
+1. [Bias and Fairness](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/bias_fairness.ipynb)
+2.  [Data Expectations](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/data_expectations.ipynb)
+3.  [Data Relations](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/data_relations.ipynb)
+4.  [Drift Analysis](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/drift.ipynb)
+5.  [Duplicates](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/duplicates.ipynb)
+6.  Labelling: [Categoricals](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/labelling_categorical.ipynb) and [Numericals](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/labelling_numerical.ipynb)
+7.  [Missings](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/missings.ipynb)
+8.  [Erroneous Data](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/tutorials/erroneous_data.ipynb)
 
 ## Contributing
 We are open to collaboration! If you want to start contributing you only need to:
@@ -123,7 +120,7 @@ You can also join the discussions on our [Discord Community](https://discord.com
 For support in using this library, please join our Discord server. The Discord community is very friendly and great about quickly answering questions about the use and development of the library. [Click here to join our Discord community!](https://discord.com/invite/mw7xjJ7b7s)
 
 ## License
-[GNU General Public License v3.0](https://github.com/ydataai/ydata-quality/blob/master/LICENSE)
+[GNU General Public License v3.0](https://github.com/Data-Centric-AI-Community/fg-data-quality/blob/master/LICENSE)
 
 ## About
 
