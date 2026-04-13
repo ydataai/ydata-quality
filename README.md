@@ -1,3 +1,6 @@
+> **`ydata-quality` is now `data-quality`.** This package has been renamed to `data-quality`. Please follow the [Migration Guide](#migration-guide) as soon as possible — the old package will no longer receive updates or bug fixes.
+
+
 [![](https://api.codacy.com/project/badge/Grade/f1662116e982402c956d2720fbd24507)](https://app.codacy.com/gh/ydataai/ydata-quality)
 ![](https://img.shields.io/github/workflow/status/ydataai/ydata-quality/release)
 ![](https://img.shields.io/pypi/status/ydata-quality)
@@ -57,6 +60,41 @@ On top of the summary, you can retrieve a list of detected warnings for detailed
 # retrieve a list of data quality warnings 
 warnings = dq.get_warnings()
 ```
+
+## Migration Guide
+ 
+### 1. Uninstall the old package
+ 
+```bash
+pip uninstall ydata-quality
+```
+ 
+### 2. Install the new package
+ 
+```bash
+pip install data-quality
+```
+ 
+### 3. Update your imports
+ 
+Find and replace all occurrences of the old import in your codebase:
+ 
+```python
+# Before
+import ydata_quality
+from data_quality import DataQuality
+
+# After
+import data_quality
+from data_quality import DataQuality
+```
+ 
+You can use this one-liner to find all affected files:
+ 
+```bash
+grep -r "ydata_quality" . --include="*.py"
+```
+
 ## Examples
 
 Here you can find walkthrough tutorials and examples to familiarize with different modules of `ydata_quality`
