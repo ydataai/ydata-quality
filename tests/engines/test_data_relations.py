@@ -4,7 +4,7 @@ from pandas import read_csv
 import nbformat
 from nbconvert.preprocessors import ExecutePreprocessor
 
-from ydata_quality.data_relations.engine import DataRelationsDetector
+from data_quality.data_relations.engine import DataRelationsDetector
 
 
 @fixture(name='data_relations')
