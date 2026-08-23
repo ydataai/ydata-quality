@@ -5,7 +5,7 @@ Implementation of BiasFairness engine to run bias and fairness analysis.
 from typing import List, Optional
 
 from pandas import DataFrame, Series
-from dython.nominal import compute_associations
+from dython.nominal import associations
 
 from src.data_quality.core.warnings import Priority
 
@@ -54,7 +54,7 @@ class BiasFairness(QualityEngine):
         # TODO: multiple thresholds per association type (num/num, num/cat, cat/cat)
 
         # Compute association measures for sensitive features
-        corrs = compute_associations(self.df, num_num_assoc='pearson', nom_nom_assoc='cramer')
+        corrs = associations(self.df, num_num_assoc='pearson', nom_nom_assoc='cramer')
         corrs = filter_associations(corrs, th=th, name='association', subset=self.sensitive_features)
 
         if len(corrs) > 0:

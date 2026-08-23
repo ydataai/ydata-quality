@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 from numpy import argwhere, ones, tril
 from pandas import DataFrame
-from src.data_quality.core.warnings import Priority
+from ..core.warnings import Priority
 
 from ..core import QualityEngine, QualityWarning
 from ..utils.auxiliary import infer_dtypes, standard_normalize
