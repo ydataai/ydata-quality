@@ -10,7 +10,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.exceptions import ConvergenceWarning, DataConversionWarning
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import mean_squared_error, roc_auc_score
+from sklearn.metrics import confusion_matrix, mean_squared_error, roc_auc_score
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -136,11 +136,38 @@ def performance_per_feature_values(df: DataFrame, feature: str, label: str, task
     # 3. Get the performances per feature value
     uniques = set(x_test[feature])
     results = {}
-    for value in uniques:  # for each category
+    for value in uniques:
         y_pred_cat = y_pred[x_test[feature] == value]
         y_true_cat = y_test[x_test[feature] == value]
+
         try:
-            results[value] = metric(y_true_cat, y_pred_cat)
+            if task == 'classification':
+                auroc = roc_auc_score(y_true_cat, y_pred_cat)
+
+                y_pred_class = (y_pred_cat >= 0.5).astype(int)
+
+                tn, fp, fn, tp = confusion_matrix(
+                    y_true_cat,
+                    y_pred_class,
+                    labels=[0, 1]
+                ).ravel()
+
+                sensitivity = tp / (tp + fn)
+                specificity = tn / (tn + fp)
+                false_positive_rate = fp / (fp + tn)
+                false_negative_rate = fn / (fn + tp)
+
+                results[value] = {
+                    'auroc': auroc,
+                    'sensitivity': sensitivity,
+                    'specificity': specificity,
+                    'false_positive_rate': false_positive_rate,
+                    'false_negative_rate': false_negative_rate
+                }
+
+            else:
+                results[value] = metric(y_true_cat, y_pred_cat)
+
         except ValueError as exc:
             results[value] = f'[ERROR] Failed performance metric with message: {exc}'
 

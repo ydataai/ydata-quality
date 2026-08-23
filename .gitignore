@@ -245,6 +245,7 @@ ENV/
 env.bak/
 venv.bak/
 pythonenv*
+oenv/
 
 # Spyder project settings
 .spyderproject
@@ -378,3 +379,4 @@ __version__.py
 # Requirements
 !requirements.txt
 !requirements-dev.txt
+
